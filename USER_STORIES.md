@@ -9,11 +9,11 @@ acceptance criteria are met — create the commit shown. Do not bundle stories.
 
 ## Current state
 
-- **Done:** US-00 (scaffold), US-01 (`xmlspan`), US-02 (`edit`), US-03 (`textrules`), US-04 (`diffui`), US-05 (`discover`+`git`).
+- **Done:** US-00 (scaffold), US-01 (`xmlspan`), US-02 (`edit`), US-03 (`textrules`), US-04 (`diffui`), US-05 (`discover`+`git`), US-06 (`step`).
 - **Extracted:** this is the standalone repository; `reference/` (Go source +
   `SPEC.md` + fixtures) and `EXTRACT.md` are present and the Java module lives
   at the repo root (no `refactor-java/` prefix).
-- **Next:** US-06 — `refactor(step): add Step/Fix interfaces and shared engine`.
+- **Next:** US-07 — `refactor(jrutil): add JasperReports engine wrappers`.
 
 ---
 
@@ -372,7 +372,7 @@ in any repo.
 | US-03 | ☑ | `refactor(textrules): add pure text transforms and AST expression formatting` |
 | US-04 | ☑ | `refactor(diffui): add terminal UI with prompt and color gating` |
 | US-05 | ☑ | `refactor(discover,git): add memoized file discovery and git plumbing` |
-| US-06 | ☐ | `refactor(step): add Step/Fix interfaces and shared engine` |
+| US-06 | ☑ | `refactor(step): add Step/Fix interfaces and shared engine` |
 | US-07 | ☐ | `refactor(jrutil): add JasperReports engine wrappers` |
 | US-08 | ☐ | `refactor(commitmsg): port commit-message step to Step interface` |
 | US-09 | ☐ | `refactor(format): port structural/code fixes on xmlspan` |
