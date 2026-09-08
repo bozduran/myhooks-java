@@ -24,6 +24,7 @@ public final class GitStaged {
     private final Command command;
     private List<String> staged;
     private List<String> tracked;
+    private List<String> modified;
 
     /** Runs git in the current working directory. */
     public GitStaged() {
@@ -54,6 +55,14 @@ public final class GitStaged {
             tracked = splitNul(run("ls-files", "-z"));
         }
         return tracked;
+    }
+
+    /** Files with unstaged changes from {@code git diff --name-only}. */
+    public List<String> modified() {
+        if (modified == null) {
+            modified = splitLines(run("diff", "--name-only"));
+        }
+        return modified;
     }
 
     private String run(String... gitArgs) {

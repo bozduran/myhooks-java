@@ -28,6 +28,13 @@ public final class FileDiscovery {
                 .toList();
     }
 
+    /** Staged files that currently have unstaged (working-tree) changes. */
+    public List<String> modified() {
+        return git.modified().stream()
+                .filter(FileDiscovery::isJrxml)
+                .toList();
+    }
+
     private static boolean isJrxml(String path) {
         return path.toLowerCase(Locale.ROOT).endsWith(".jrxml");
     }
