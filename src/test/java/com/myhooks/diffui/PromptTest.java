@@ -4,8 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import org.jline.utils.NonBlocking;
+import org.jline.utils.NonBlockingReader;
 import org.junit.jupiter.api.Test;
 
 class PromptTest {
@@ -75,6 +79,22 @@ class PromptTest {
     }
 
     @Test
+    void readKeyParsesArrowSequencesNonBlocking() throws IOException {
+        assertEquals("right", readKeyRaw("\u001b[C"));
+        assertEquals("left", readKeyRaw("\u001b[D"));
+        assertEquals("up", readKeyRaw("\u001b[A"));
+        assertEquals("down", readKeyRaw("\u001b[B"));
+    }
+
+    @Test
+    void readKeyNonBlockingLoneEscapeAndUnknown() throws IOException {
+        assertEquals("esc", readKeyRaw("\u001b"));
+        assertEquals("esc", readKeyRaw("\u001bX"));
+        assertEquals("esc", readKeyRaw("\u001b[Z"));
+        assertEquals("", readKeyRaw(""));
+    }
+
+    @Test
     void renderPromptShowsOptionsAndInvertsSelection() {
         String out = Prompt.renderPrompt("Question?", 1);
         assertTrue(out.contains("Question?"));
@@ -90,5 +110,11 @@ class PromptTest {
 
     private static String readKey(String data) throws IOException {
         return Prompt.readKey(new StringReader(data));
+    }
+
+    private static String readKeyRaw(String data) throws IOException {
+        NonBlockingReader reader = NonBlocking.nonBlocking(
+                "test", new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+        return Prompt.readKey(reader);
     }
 }

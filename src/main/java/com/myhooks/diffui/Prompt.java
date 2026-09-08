@@ -1,36 +1,38 @@
 package com.myhooks.diffui;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.Reader;
-import org.jline.terminal.Attributes;
-import org.jline.terminal.Terminal;
-import org.jline.terminal.TerminalBuilder;
+import org.jline.utils.NonBlockingReader;
 
 /**
  * Interactive yes/no/all/skip prompt. On a real terminal it renders
- * arrow-key-selectable options via JLine raw mode (default answer No); on a
- * non-terminal it falls back to line-based {@code y/n/a/s} input. The
- * controlling terminal ({@code /dev/tty}) is used as a fallback when stdin is a
- * non-TTY, so prompts still work under {@code git commit}.
+ * arrow-key-selectable options via the controlling terminal in raw mode
+ * (default answer No); on a non-terminal it falls back to line-based
+ * {@code y/n/a/s} input. The controlling terminal ({@code /dev/tty}) is used
+ * rather than stdin because git runs hooks with stdin bound to {@code /dev/null}.
  */
 public final class Prompt {
+
+    /** How long to wait for the rest of an escape sequence. */
+    private static final long ESC_TIMEOUT_MS = 40L;
+    /** How long to wait for typeahead when flushing after an answer. */
+    private static final long FLUSH_TIMEOUT_MS = 25L;
 
     private Prompt() {
     }
 
     public static Choice ask(String question) {
-        Terminal terminal = buildTerminal();
-        if (terminal != null) {
+        Tty tty = Tty.openRaw();
+        if (tty != null) {
             try {
-                return askRaw(question, terminal);
+                return askRaw(question, tty);
             } catch (Exception ignored) {
                 // fall through to line-based input
+            } finally {
+                tty.close();
             }
         }
         return askLine(question, new BufferedReader(new InputStreamReader(System.in)), System.out);
@@ -76,64 +78,85 @@ public final class Prompt {
     // Raw terminal mode
     // ------------------------------------------------------------------
 
-    static Choice askRaw(String question, Terminal terminal) {
-        Attributes previous = terminal.enterRawMode();
-        try {
-            int selected = 1; // default answer is No
-            while (true) {
-                terminal.writer().print(renderPrompt(question, selected));
-                terminal.flush();
-                String key = readKey(terminal.reader());
-                switch (key) {
-                    case "left":
-                    case "up":
-                        selected = selected - 1 < 0 ? Choice.values().length - 1 : selected - 1;
-                        break;
-                    case "right":
-                    case "down":
-                        selected = (selected + 1) % Choice.values().length;
-                        break;
-                    case "enter":
-                        newline(terminal);
-                        return Choice.values()[selected];
-                    case "y":
-                    case "Y":
-                        newline(terminal);
-                        return Choice.YES;
-                    case "n":
-                    case "N":
-                        newline(terminal);
-                        return Choice.NO;
-                    case "a":
-                    case "A":
-                        newline(terminal);
-                        return Choice.ALL;
-                    case "s":
-                    case "S":
-                        newline(terminal);
-                        return Choice.SKIP;
-                    case "":
-                        return Choice.NO; // EOF (terminal gone)
-                    default:
-                        break; // ignore ESC / unknown keys
-                }
-            }
-        } finally {
-            try {
-                terminal.setAttributes(previous);
-            } catch (Exception ignored) {
-                // best-effort restore
+    static Choice askRaw(String question, Tty tty) {
+        NonBlockingReader reader = tty.rawReader();
+        PrintStream out = tty.out();
+        int selected = 1; // default answer is No
+        while (true) {
+            out.print(renderPrompt(question, selected));
+            out.flush();
+            String key = readKey(reader);
+            switch (key) {
+                case "left":
+                case "up":
+                    selected = selected - 1 < 0 ? Choice.values().length - 1 : selected - 1;
+                    break;
+                case "right":
+                case "down":
+                    selected = (selected + 1) % Choice.values().length;
+                    break;
+                case "enter":
+                    newline(out);
+                    drain(reader);
+                    return Choice.values()[selected];
+                case "y":
+                case "Y":
+                    newline(out);
+                    drain(reader);
+                    return Choice.YES;
+                case "n":
+                case "N":
+                    newline(out);
+                    drain(reader);
+                    return Choice.NO;
+                case "a":
+                case "A":
+                    newline(out);
+                    drain(reader);
+                    return Choice.ALL;
+                case "s":
+                case "S":
+                    newline(out);
+                    drain(reader);
+                    return Choice.SKIP;
+                case "":
+                    return Choice.NO; // EOF (terminal gone)
+                default:
+                    break; // ignore ESC / unknown keys
             }
         }
     }
 
-    private static void newline(Terminal terminal) {
-        terminal.writer().println();
-        terminal.flush();
+    private static void newline(PrintStream out) {
+        out.println();
+        out.flush();
     }
 
-    /** Reads one logical key; returns "" on EOF or read error. */
+    /** Discards typeahead (the rest of "yes"/"no"/"all"/"skip" and the newline). */
+    private static void drain(NonBlockingReader in) {
+        try {
+            while (in.read(FLUSH_TIMEOUT_MS) >= 0) {
+                // discard
+            }
+        } catch (IOException ignored) {
+            // best-effort
+        }
+    }
+
+    /**
+     * Reads one logical key. Returns "" on EOF or read error. A JLine
+     * {@link NonBlockingReader} (real terminal) reads escape sequences with a
+     * timeout so a lone ESC is not confused with an arrow key; a plain
+     * {@link Reader} (tests) reads bytes directly.
+     */
     static String readKey(Reader in) {
+        if (in instanceof NonBlockingReader nonBlocking) {
+            return readKeyNonBlocking(nonBlocking);
+        }
+        return readKeyBlocking(in);
+    }
+
+    private static String readKeyBlocking(Reader in) {
         try {
             int c = in.read();
             if (c < 0) {
@@ -145,18 +168,46 @@ public final class Prompt {
                 if (c1 != '[') {
                     return "esc";
                 }
-                switch (c2) {
-                    case 'C':
-                        return "right";
-                    case 'D':
-                        return "left";
-                    case 'A':
-                        return "up";
-                    case 'B':
-                        return "down";
-                    default:
-                        return "esc";
+                return switch (c2) {
+                    case 'C' -> "right";
+                    case 'D' -> "left";
+                    case 'A' -> "up";
+                    case 'B' -> "down";
+                    default -> "esc";
+                };
+            }
+            if (c == '\r' || c == '\n') {
+                return "enter";
+            }
+            return String.valueOf((char) c);
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private static String readKeyNonBlocking(NonBlockingReader in) {
+        try {
+            int c = in.read();
+            if (c < 0) {
+                return "";
+            }
+            if (c == 0x1b) {
+                int c1 = in.peek(ESC_TIMEOUT_MS);
+                if (c1 != '[') {
+                    return "esc";
                 }
+                in.read(); // consume '['
+                int c2 = in.read(ESC_TIMEOUT_MS);
+                if (c2 < 0) {
+                    return "esc";
+                }
+                return switch (c2) {
+                    case 'C' -> "right";
+                    case 'D' -> "left";
+                    case 'A' -> "up";
+                    case 'B' -> "down";
+                    default -> "esc";
+                };
             }
             if (c == '\r' || c == '\n') {
                 return "enter";
@@ -183,43 +234,8 @@ public final class Prompt {
     }
 
     // ------------------------------------------------------------------
-    // Terminal selection
+    // Helpers
     // ------------------------------------------------------------------
-
-    private static Terminal buildTerminal() {
-        Terminal terminal = trySystemTerminal();
-        if (terminal != null) {
-            return terminal;
-        }
-        // git runs hooks with /dev/null as stdin: fall back to the controlling
-        // terminal when available (opened for both input and output so JLine can
-        // detect it via its file descriptors).
-        File tty = new File("/dev/tty");
-        if (tty.canRead() && tty.canWrite()) {
-            try {
-                Terminal t = TerminalBuilder.builder()
-                        .streams(new FileInputStream(tty), new FileOutputStream(tty))
-                        .dumb(true)
-                        .build();
-                return Terminal.TYPE_DUMB.equals(t.getType()) ? null : t;
-            } catch (Exception ignored) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private static Terminal trySystemTerminal() {
-        try {
-            Terminal terminal = TerminalBuilder.builder()
-                    .system(true)
-                    .dumb(true)
-                    .build();
-            return Terminal.TYPE_DUMB.equals(terminal.getType()) ? null : terminal;
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
 
     private static BufferedReader toBufferedReader(Reader in) {
         return in instanceof BufferedReader buffered ? buffered : new BufferedReader(in);

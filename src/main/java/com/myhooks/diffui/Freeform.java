@@ -16,6 +16,16 @@ public final class Freeform {
     }
 
     public static String ask(String question) {
+        // git runs hooks with stdin bound to /dev/null, so read the controlling
+        // terminal when available; fall back to stdin otherwise.
+        Tty tty = Tty.openLine();
+        if (tty != null) {
+            try {
+                return ask(question, tty.lineReader(), tty.out());
+            } finally {
+                tty.close();
+            }
+        }
         return ask(question, new BufferedReader(new InputStreamReader(System.in)), System.out);
     }
 
