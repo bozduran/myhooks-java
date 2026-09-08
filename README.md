@@ -16,8 +16,8 @@ review the diff and re-commit.
 ## Build
 
 ```sh
-mvn package                     # -> target/myhooks-0.1.0-SNAPSHOT.jar (fat jar)
-java -jar target/myhooks-0.1.0-SNAPSHOT.jar --help
+mvn package                     # -> target/myhooks-1.0.0.jar (fat jar)
+java -jar target/myhooks-1.0.0.jar --help
 ```
 
 ## Install as hooks
@@ -70,13 +70,12 @@ concurrently.
 │       ├── textcheck/               step 4
 │       ├── validate/                step 5
 │       └── report/                  step 6
-├── src/test/java/com/myhooks/       mirrors main, one test class per unit
-└── reference/                       read-only port source (Go code + SPEC + fixtures)
+└── src/test/java/com/myhooks/       mirrors main, one test class per unit
 ```
 
 ## Docs
 
+- [`SPEC.md`](SPEC.md) — the Java software specification.
 - [`PLAN.md`](PLAN.md) — refactor plan and locked decisions.
 - [`USER_STORIES.md`](USER_STORIES.md) — step-by-step stories (one commit each).
 - [`EXTRACT.md`](EXTRACT.md) — how this folder was moved to a standalone repo.
-- [`reference/`](reference/) — original Go implementation, `SPEC.md`, fixtures.

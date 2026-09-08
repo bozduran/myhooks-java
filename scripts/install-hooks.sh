@@ -6,7 +6,7 @@
 set -eu
 
 PROJECT_DIR=$(cd "$(dirname "$0")/.." && pwd)
-JAR="$PROJECT_DIR/target/myhooks-0.1.0-SNAPSHOT.jar"
+JAR="$PROJECT_DIR/target/myhooks-1.0.0.jar"
 TARGET="${1:-$(pwd)}"
 
 if [ ! -f "$JAR" ]; then
