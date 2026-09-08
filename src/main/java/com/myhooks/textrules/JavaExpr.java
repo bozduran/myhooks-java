@@ -21,7 +21,7 @@ import java.util.Set;
  *
  * <p>The rules port the Go regex tokenizer:
  * <ul>
- *   <li>binary operators {@code == != >= <= && ||} → single surrounding space;</li>
+ *   <li>binary operators {@code == != < > >= <= && ||} → single surrounding space;</li>
  *   <li>ternary {@code ?} and {@code :} → single surrounding space;</li>
  *   <li>comma followed by a non-space → {@code ", "};</li>
  *   <li>an uppercase reference-type cast {@code (Type)x} → {@code (Type) x}.</li>
@@ -34,6 +34,8 @@ public final class JavaExpr {
     private static final Set<BinaryExpr.Operator> SPACED_BINARY = Set.of(
             BinaryExpr.Operator.EQUALS,
             BinaryExpr.Operator.NOT_EQUALS,
+            BinaryExpr.Operator.LESS,
+            BinaryExpr.Operator.GREATER,
             BinaryExpr.Operator.GREATER_EQUALS,
             BinaryExpr.Operator.LESS_EQUALS,
             BinaryExpr.Operator.AND,

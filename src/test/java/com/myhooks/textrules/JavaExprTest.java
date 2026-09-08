@@ -22,6 +22,12 @@ class JavaExprTest {
     }
 
     @Test
+    void spacesLessThanAndGreaterThan() {
+        assertEquals("a < b", JavaExpr.format("a<b"));
+        assertEquals("a > b", JavaExpr.format("a>b"));
+    }
+
+    @Test
     void spacesTernary() {
         assertEquals("a ? b : c", JavaExpr.format("a?b:c"));
     }
@@ -40,8 +46,8 @@ class JavaExprTest {
     }
 
     @Test
-    void leavesBareLessThanUntouched() {
-        assertEquals("$F{a} >= 1 && $F{b}<5 || $F{c} <= 3",
+    void spacesMixedComparisonOperators() {
+        assertEquals("$F{a} >= 1 && $F{b} < 5 || $F{c} <= 3",
                 JavaExpr.format("$F{a}>=1&&$F{b}<5||$F{c}<=3"));
     }
 
