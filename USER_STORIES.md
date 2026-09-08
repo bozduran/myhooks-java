@@ -9,11 +9,11 @@ acceptance criteria are met — create the commit shown. Do not bundle stories.
 
 ## Current state
 
-- **Done:** US-00 (scaffold), US-01 (`xmlspan`), US-02 (`edit`), US-03 (`textrules`), US-04 (`diffui`), US-05 (`discover`+`git`), US-06 (`step`), US-07 (`jrutil`), US-08 (`commitmsg`), US-09 (`format`), US-10 (`sort`), US-11 (`textcheck`).
+- **Done:** US-00 (scaffold), US-01 (`xmlspan`), US-02 (`edit`), US-03 (`textrules`), US-04 (`diffui`), US-05 (`discover`+`git`), US-06 (`step`), US-07 (`jrutil`), US-08 (`commitmsg`), US-09 (`format`), US-10 (`sort`), US-11 (`textcheck`), US-12 (`clear`).
 - **Extracted:** this is the standalone repository; `reference/` (Go source +
   `SPEC.md` + fixtures) and `EXTRACT.md` are present and the Java module lives
   at the repo root (no `refactor-java/` prefix).
-- **Next:** US-12 — `refactor(clear): decompose checks and make jsonql fixes interactive`.
+- **Next:** US-13 — `refactor(validate): add XSD and compile validation gate`.
 
 ---
 
@@ -378,7 +378,7 @@ in any repo.
 | US-09 | ☑ | `refactor(format): port structural/code fixes on xmlspan` |
 | US-10 | ☑ | `refactor(sort): port geometry sort with coordinate warnings` |
 | US-11 | ☑ | `refactor(textcheck): port rendered-text rules on textrules` |
-| US-12 | ☐ | `refactor(clear): decompose checks and make jsonql fixes interactive` |
+| US-12 | ☑ | `refactor(clear): decompose checks and make jsonql fixes interactive` |
 | US-13 | ☐ | `refactor(validate): add XSD and compile validation gate` |
 | US-14 | ☐ | `refactor(report): port include-chain report with includegraph` |
 | US-15 | ☐ | `refactor(main): picocli dispatch with env toggles and arg validation` |
