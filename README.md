@@ -22,8 +22,30 @@ java -jar target/myhooks-0.1.0-SNAPSHOT.jar --help
 
 ## Install as hooks
 
-- Raw hooks: `scripts/install-hooks.sh` (added in US-16).
-- pre-commit framework: `.pre-commit-hooks.yaml` (added in US-16).
+### Raw git hooks
+
+```sh
+mvn package
+scripts/install-hooks.sh /path/to/your/repo
+```
+
+This writes a `java -jar ...` wrapper as `/path/to/your/repo/.git/hooks/pre-commit`
+and `.git/hooks/commit-msg` (which runs `myhooks commitmsg "$1"`).
+
+### pre-commit framework
+
+Add a local hook referencing `.pre-commit-hooks.yaml`:
+
+```yaml
+repos:
+  - repo: /path/to/myhooks-java
+    hooks:
+      - id: myhooks
+      - id: myhooks-commitmsg
+```
+
+`require_serial: true` is set because the steps are interactive and must not run
+concurrently.
 
 ## Layout
 
