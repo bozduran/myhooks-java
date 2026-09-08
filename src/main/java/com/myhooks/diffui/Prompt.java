@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.Reader;
@@ -84,7 +83,7 @@ public final class Prompt {
             while (true) {
                 terminal.writer().print(renderPrompt(question, selected));
                 terminal.flush();
-                String key = readKey(terminal.input());
+                String key = readKey(terminal.reader());
                 switch (key) {
                     case "left":
                     case "up":
@@ -134,19 +133,19 @@ public final class Prompt {
     }
 
     /** Reads one logical key; returns "" on EOF or read error. */
-    static String readKey(InputStream in) {
+    static String readKey(Reader in) {
         try {
-            int b = in.read();
-            if (b < 0) {
+            int c = in.read();
+            if (c < 0) {
                 return "";
             }
-            if (b == 0x1b) {
-                int b1 = in.read();
-                int b2 = in.read();
-                if (b1 != '[') {
+            if (c == 0x1b) {
+                int c1 = in.read();
+                int c2 = in.read();
+                if (c1 != '[') {
                     return "esc";
                 }
-                switch (b2) {
+                switch (c2) {
                     case 'C':
                         return "right";
                     case 'D':
@@ -159,10 +158,10 @@ public final class Prompt {
                         return "esc";
                 }
             }
-            if (b == '\r' || b == '\n') {
+            if (c == '\r' || c == '\n') {
                 return "enter";
             }
-            return String.valueOf((char) b);
+            return String.valueOf((char) c);
         } catch (IOException e) {
             return "";
         }

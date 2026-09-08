@@ -4,10 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
 class PromptTest {
@@ -91,6 +89,6 @@ class PromptTest {
     }
 
     private static String readKey(String data) throws IOException {
-        return Prompt.readKey(new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)));
+        return Prompt.readKey(new StringReader(data));
     }
 }
