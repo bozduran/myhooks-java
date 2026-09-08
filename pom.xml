@@ -19,7 +19,7 @@
 
         <!-- Initial pins; confirm/adjust in US-00's first full build. -->
         <jasperreports.version>7.0.7</jasperreports.version>
-        <lombok.version>1.18.36</lombok.version>
+        <lombok.version>1.18.46</lombok.version>
         <junit.version>5.11.4</junit.version>
         <picocli.version>4.7.6</picocli.version>
         <jline.version>3.27.1</jline.version>

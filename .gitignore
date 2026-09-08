@@ -1,0 +1,10 @@
+# Maven build output
+target/
+dependency-reduced-pom.xml
+
+# Java compiled classes
+*.class
+
+# OS / editor noise
+.DS_Store
+*.iml

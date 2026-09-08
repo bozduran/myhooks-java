@@ -4,14 +4,15 @@ Work through these **in order**. Each story is a vertical slice: implement it,
 run `mvn test` (requires `git` on `PATH`), and — only when green and its
 acceptance criteria are met — create the commit shown. Do not bundle stories.
 
-> Target workspace: `refactor-java/` (self-contained; see `EXTRACT.md`). All
-> stories touch `refactor-java/**` only.
+> Workspace: the repository root (this standalone repo; see `EXTRACT.md`).
+> All stories touch the Java module at the repo root.
 
 ## Current state
 
-- **Done:** US-00 (commit `df29ed1`).
-- **Prepared for standalone extraction:** `reference/` (Go source + `SPEC.md` +
-  fixtures) and `EXTRACT.md` added.
+- **Done:** US-00 — scaffold (this repo's initial commit `29ea598`).
+- **Extracted:** this is the standalone repository; `reference/` (Go source +
+  `SPEC.md` + fixtures) and `EXTRACT.md` are present and the Java module lives
+  at the repo root (no `refactor-java/` prefix).
 - **Next:** US-01 — `refactor(xmlspan): add StAX byte-offset XML index`.
 
 ---
@@ -21,7 +22,7 @@ acceptance criteria are met — create the commit shown. Do not bundle stories.
 skeleton, shade fat-jar config, and the plan/story docs, **so that** the Java
 refactor has a correct home.
 
-**Scope**: `refactor-java/pom.xml`, `.gitignore`, `README.md`, `PLAN.md`,
+**Scope**: `pom.xml`, `.gitignore`, `README.md`, `PLAN.md`,
 `USER_STORIES.md`, `src/main/java/com/myhooks/**/package-info.java`,
 `Main.java` stub.
 

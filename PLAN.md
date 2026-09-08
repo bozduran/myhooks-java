@@ -2,6 +2,9 @@
 
 > Companion to [`USER_STORIES.md`](USER_STORIES.md). This is the "what and why";
 > the stories are the "how, in what order, one commit each".
+>
+> **Status:** extraction is complete — the `refactor-java/` module this plan
+> describes now lives at this repository's root (see `EXTRACT.md`).
 
 ## 1. Objective
 
