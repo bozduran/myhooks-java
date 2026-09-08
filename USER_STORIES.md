@@ -9,11 +9,11 @@ acceptance criteria are met — create the commit shown. Do not bundle stories.
 
 ## Current state
 
-- **Done:** US-00 (scaffold), US-01 (`xmlspan`), US-02 (`edit`), US-03 (`textrules`), US-04 (`diffui`), US-05 (`discover`+`git`), US-06 (`step`), US-07 (`jrutil`), US-08 (`commitmsg`), US-09 (`format`), US-10 (`sort`), US-11 (`textcheck`), US-12 (`clear`), US-13 (`validate`), US-14 (`includegraph`+`report`).
-- **Extracted:** this is the standalone repository; `reference/` (Go source +
-  `SPEC.md` + fixtures) and `EXTRACT.md` are present and the Java module lives
-  at the repo root (no `refactor-java/` prefix).
-- **Next:** US-15 — `refactor(main): picocli dispatch with env toggles and arg validation`.
+- **Done:** US-00 .. US-17 — **all stories complete**.
+- **Extracted:** this is the standalone repository; `reference/` was removed
+  once porting was complete, and the Java module lives at the repo root (no
+  `refactor-java/` prefix).
+- **Next:** none.
 
 ---
 
@@ -381,6 +381,6 @@ in any repo.
 | US-12 | ☑ | `refactor(clear): decompose checks and make jsonql fixes interactive` |
 | US-13 | ☑ | `refactor(validate): add XSD and compile validation gate` |
 | US-14 | ☑ | `refactor(report): port include-chain report with includegraph` |
-| US-15 | ☐ | `refactor(main): picocli dispatch with env toggles and arg validation` |
-| US-16 | ☐ | `feat: add hook install script and docs` |
-| US-17 | ☐ | `docs: finalize Java spec and usage docs` |
+| US-15 | ☑ | `refactor(main): picocli dispatch with env toggles and arg validation` |
+| US-16 | ☑ | `feat: add hook install script and docs` |
+| US-17 | ☑ | `docs: finalize Java spec and usage docs` |
