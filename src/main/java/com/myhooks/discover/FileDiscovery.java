@@ -35,6 +35,20 @@ public final class FileDiscovery {
                 .toList();
     }
 
+    /** All git-tracked {@code .jrxml} files. */
+    public List<String> tracked() {
+        return git.tracked().stream()
+                .filter(FileDiscovery::isJrxml)
+                .toList();
+    }
+
+    /** All staged {@code .jrxml} files (unfiltered by {@code args}). */
+    public List<String> staged() {
+        return git.staged().stream()
+                .filter(FileDiscovery::isJrxml)
+                .toList();
+    }
+
     private static boolean isJrxml(String path) {
         return path.toLowerCase(Locale.ROOT).endsWith(".jrxml");
     }
