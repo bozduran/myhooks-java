@@ -16,14 +16,21 @@ public final class Context {
     private final PrintStream err;
     private final boolean color;
     private final Function<String, Choice> prompt;
+    private final Function<String, String> freeform;
 
     public Context(FileDiscovery discovery, PrintStream out, PrintStream err,
             boolean color, Function<String, Choice> prompt) {
+        this(discovery, out, err, color, prompt, question -> "");
+    }
+
+    public Context(FileDiscovery discovery, PrintStream out, PrintStream err,
+            boolean color, Function<String, Choice> prompt, Function<String, String> freeform) {
         this.discovery = discovery;
         this.out = out;
         this.err = err;
         this.color = color;
         this.prompt = prompt;
+        this.freeform = freeform;
     }
 
     public FileDiscovery discovery() {
@@ -44,5 +51,9 @@ public final class Context {
 
     public Choice prompt(String question) {
         return prompt.apply(question);
+    }
+
+    public String freeform(String question) {
+        return freeform.apply(question);
     }
 }
