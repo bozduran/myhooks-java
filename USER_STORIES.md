@@ -9,11 +9,11 @@ acceptance criteria are met — create the commit shown. Do not bundle stories.
 
 ## Current state
 
-- **Done:** US-00 (scaffold), US-01 (`xmlspan`), US-02 (`edit`), US-03 (`textrules`), US-04 (`diffui`), US-05 (`discover`+`git`), US-06 (`step`), US-07 (`jrutil`), US-08 (`commitmsg`).
+- **Done:** US-00 (scaffold), US-01 (`xmlspan`), US-02 (`edit`), US-03 (`textrules`), US-04 (`diffui`), US-05 (`discover`+`git`), US-06 (`step`), US-07 (`jrutil`), US-08 (`commitmsg`), US-09 (`format`).
 - **Extracted:** this is the standalone repository; `reference/` (Go source +
   `SPEC.md` + fixtures) and `EXTRACT.md` are present and the Java module lives
   at the repo root (no `refactor-java/` prefix).
-- **Next:** US-09 — `refactor(format): port structural/code fixes on xmlspan`.
+- **Next:** US-10 — `refactor(sort): port geometry sort with coordinate warnings`.
 
 ---
 
@@ -375,7 +375,7 @@ in any repo.
 | US-06 | ☑ | `refactor(step): add Step/Fix interfaces and shared engine` |
 | US-07 | ☑ | `refactor(jrutil): add JasperReports engine wrappers` |
 | US-08 | ☑ | `refactor(commitmsg): port commit-message step to Step interface` |
-| US-09 | ☐ | `refactor(format): port structural/code fixes on xmlspan` |
+| US-09 | ☑ | `refactor(format): port structural/code fixes on xmlspan` |
 | US-10 | ☐ | `refactor(sort): port geometry sort with coordinate warnings` |
 | US-11 | ☐ | `refactor(textcheck): port rendered-text rules on textrules` |
 | US-12 | ☐ | `refactor(clear): decompose checks and make jsonql fixes interactive` |
