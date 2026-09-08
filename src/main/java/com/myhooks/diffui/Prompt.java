@@ -3,6 +3,7 @@ package com.myhooks.diffui;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -187,16 +188,21 @@ public final class Prompt {
     // ------------------------------------------------------------------
 
     private static Terminal buildTerminal() {
-        Terminal terminal = tryTerminal(System.in, System.out);
+        Terminal terminal = trySystemTerminal();
         if (terminal != null) {
             return terminal;
         }
         // git runs hooks with /dev/null as stdin: fall back to the controlling
-        // terminal when available.
+        // terminal when available (opened for both input and output so JLine can
+        // detect it via its file descriptors).
         File tty = new File("/dev/tty");
-        if (tty.canRead()) {
+        if (tty.canRead() && tty.canWrite()) {
             try {
-                return tryTerminal(new FileInputStream(tty), System.out);
+                Terminal t = TerminalBuilder.builder()
+                        .streams(new FileInputStream(tty), new FileOutputStream(tty))
+                        .dumb(true)
+                        .build();
+                return Terminal.TYPE_DUMB.equals(t.getType()) ? null : t;
             } catch (Exception ignored) {
                 return null;
             }
@@ -204,10 +210,10 @@ public final class Prompt {
         return null;
     }
 
-    private static Terminal tryTerminal(InputStream in, java.io.OutputStream out) {
+    private static Terminal trySystemTerminal() {
         try {
             Terminal terminal = TerminalBuilder.builder()
-                    .streams(in, out)
+                    .system(true)
                     .dumb(true)
                     .build();
             return Terminal.TYPE_DUMB.equals(terminal.getType()) ? null : terminal;

@@ -3,6 +3,7 @@ package com.myhooks;
 import com.myhooks.diffui.DiffRenderer;
 import com.myhooks.diffui.Freeform;
 import com.myhooks.diffui.Prompt;
+import com.myhooks.diffui.Terminals;
 import com.myhooks.discover.FileDiscovery;
 import com.myhooks.step.Context;
 import com.myhooks.step.FileStep;
@@ -53,7 +54,7 @@ public final class Main {
     /** Builds the production registry and context. */
     public static Main production() {
         FileDiscovery discovery = new FileDiscovery();
-        boolean color = DiffRenderer.colorEnabled(System.console() != null);
+        boolean color = DiffRenderer.colorEnabled(Terminals.available());
         Context context = new Context(discovery, System.out, System.err, color,
                 Prompt::ask, Freeform::ask);
 
