@@ -69,8 +69,7 @@ class ClearDiscovererTest {
                   <field name="a" class="java.lang.String">
                     <property name="net.sf.jasperreports.json.field.expression" value="a"/>
                   </field>
-                </jasperReport>
-                """;
+                """ + reference("a") + "</jasperReport>\n";
         Group jsonql = group(discover(report, ""), "jsonql fixes");
         assertEquals(1, jsonql.fixes().size());
         String out = apply(jsonql.fixes(), report);
@@ -85,8 +84,7 @@ class ClearDiscovererTest {
                     <property name="net.sf.jasperreports.json.field.expression" value="a"/>
                     <property name="net.sf.jasperreports.jsonql.field.expression" value="a"/>
                   </field>
-                </jasperReport>
-                """;
+                """ + reference("a") + "</jasperReport>\n";
         Group jsonql = group(discover(report, ""), "jsonql fixes");
         String out = apply(jsonql.fixes(), report);
         assertTrue(!out.contains("net.sf.jasperreports.json.field.expression"), out);
@@ -99,8 +97,7 @@ class ClearDiscovererTest {
                   <field name="a" class="java.lang.String">
                     <description><![CDATA[a.b.c]]></description>
                   </field>
-                </jasperReport>
-                """;
+                """ + reference("a") + "</jasperReport>\n";
         Group jsonql = group(discover(report, ""), "jsonql fixes");
         String out = apply(jsonql.fixes(), report);
         assertTrue(out.contains("net.sf.jasperreports.jsonql.field.expression\" value=\"a.b.c\""), out);
@@ -113,8 +110,7 @@ class ClearDiscovererTest {
                     <description><![CDATA[a.b.c]]></description>
                     <property name="net.sf.jasperreports.jsonql.field.expression" value="a.b"/>
                   </field>
-                </jasperReport>
-                """;
+                """ + reference("a") + "</jasperReport>\n";
         Group sync = group(discover(report, ""), "description sync");
         String out = apply(sync.fixes(), report);
         assertTrue(out.contains("<![CDATA[a.b]]>"), out);
@@ -132,8 +128,7 @@ class ClearDiscovererTest {
                   <field name="legacy" class="java.lang.String">
                     <property name="net.sf.jasperreports.json.field.expression" value="legacy"/>
                   </field>
-                </jasperReport>
-                """;
+                """ + reference("mismatch") + reference("legacy") + "</jasperReport>\n";
         List<Group> groups = discover(report, "document.iddata");
         List<String> labels = groups.stream().map(Group::label).toList();
         assertTrue(labels.contains("query migration"), labels.toString());
@@ -161,5 +156,14 @@ class ClearDiscovererTest {
             fix.apply(edits);
         }
         return edits.apply(report);
+    }
+
+    /** A textField that references {@code name}, so the field counts as used. */
+    private static String reference(String name) {
+        return "    <detail><band height=\"20\">\n"
+                + "      <element kind=\"textField\" uuid=\"00000000-0000-0000-0000-000000000001\" x=\"0\" y=\"0\" width=\"100\" height=\"20\">\n"
+                + "        <expression><![CDATA[$F{" + name + "}]]></expression>\n"
+                + "      </element>\n"
+                + "    </band></detail>\n";
     }
 }

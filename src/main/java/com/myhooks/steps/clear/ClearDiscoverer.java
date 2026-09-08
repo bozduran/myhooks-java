@@ -85,12 +85,16 @@ public final class ClearDiscoverer implements Discoverer {
 
         // 2. Unused declarations (ground-truth via the JasperReports engine)
         Set<String> used = collectUsedNames(path);
+        Set<String> unusedFieldNames = new HashSet<>();
         List<Fix> unusedFixes = new ArrayList<>();
         for (Declaration d : declarations) {
             if (d.kind() == DeclKind.PARAMETER && BUILTIN_PARAMETERS.contains(d.name())) {
                 continue;
             }
             if (!used.contains(d.kind() + ":" + d.name())) {
+                if (d.kind() == DeclKind.FIELD) {
+                    unusedFieldNames.add(d.name());
+                }
                 int start = lineStart(raw, d.start());
                 int end = d.end() + trailingNewline(raw, d.end());
                 unusedFixes.add(new EditFix("delete unused " + d.kind().name().toLowerCase() + " '" + d.name() + "'",
@@ -106,6 +110,9 @@ public final class ClearDiscoverer implements Discoverer {
         List<Fix> syncFixes = new ArrayList<>();
         for (Declaration d : declarations) {
             if (d.kind() != DeclKind.FIELD || !d.hasDescription() || !d.hasJsonql()) {
+                continue;
+            }
+            if (unusedFieldNames.contains(d.name())) {
                 continue;
             }
             if (d.jsonqlValue().isEmpty() || d.jsonqlValue().equals(d.descriptionText())) {
@@ -125,6 +132,9 @@ public final class ClearDiscoverer implements Discoverer {
         List<Fix> jsonqlFixes = new ArrayList<>();
         for (Declaration d : declarations) {
             if (d.kind() != DeclKind.FIELD) {
+                continue;
+            }
+            if (unusedFieldNames.contains(d.name())) {
                 continue;
             }
             if (d.hasLegacy()) {
@@ -339,7 +349,9 @@ public final class ClearDiscoverer implements Discoverer {
             if (query.langValueStart() >= 0 && query.langValueEnd() > query.langValueStart()) {
                 editSet.add(new Edit(query.langValueStart(), query.langValueEnd(), "jsonql"));
             }
-            if (query.bodyStart() >= 0 && query.bodyEnd() > query.bodyStart()) {
+            // bodyStart == bodyEnd is a valid (empty) CDATA body: insert the
+            // expression instead of replacing.
+            if (query.bodyStart() >= 0) {
                 editSet.add(new Edit(query.bodyStart(), query.bodyEnd(), expression));
             }
         }
