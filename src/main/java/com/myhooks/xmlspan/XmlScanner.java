@@ -35,6 +35,7 @@ public final class XmlScanner {
         Node root = null;
         Deque<Node> stack = new ArrayDeque<>();
         int cursor = 0;
+        boolean skipNextEnd = false;
 
         while (reader.hasNext()) {
             int event = reader.next();
@@ -55,14 +56,21 @@ public final class XmlScanner {
                 } else {
                     stack.peek().addChild(node);
                 }
-                if (!st.selfClosing) {
+                if (st.selfClosing) {
+                    // StAX emits START then END for a self-closing element; its
+                    // END event must not be attributed to the enclosing element
+                    // (which may share the same tag name, e.g. <element>).
+                    skipNextEnd = true;
+                } else {
                     stack.push(node);
                 }
                 cursor = st.end;
             } else if (event == XMLStreamConstants.END_ELEMENT) {
+                if (skipNextEnd) {
+                    skipNextEnd = false;
+                    continue;
+                }
                 String tag = reader.getLocalName();
-                // A self-closing element emits START then END but is never pushed;
-                // its END event therefore does not match the stack top.
                 if (!stack.isEmpty() && stack.peek().tag().equals(tag)) {
                     int endTag = findEndTag(raw, cursor, tag);
                     if (endTag < 0) {
