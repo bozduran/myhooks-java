@@ -1,0 +1,26 @@
+- id: myhooks
+  name: jrxml clear + format + sort + textcheck + report
+  description: >-
+    Runs the clear step (remove unused parameters/fields/variables, add missing
+    jsonql field expressions), the format step (punctuation/newline/attribute
+    and expression formatting, report name matching), the sort step (element
+    geometry order), the textcheck step (text spacing, double-space removal and
+    unrenderable-character replacement) and the report step (informational
+    include-chain of staged files) on staged .jrxml files. Applied changes are
+    left unstaged and the hook stops the commit for review.
+  entry: myhooks
+  language: golang
+  files: \.jrxml$
+  pass_filenames: true
+  require_serial: true
+- id: myhooks-commitmsg
+  name: commit message semantic + typo check
+  description: >-
+    Validates the commit message: requires a Conventional Commit subject
+    ("<type>(<scope>)!: <subject>") and flags common typos. A non-conforming
+    message blocks the commit; typos can be corrected interactively or skipped
+    (accept the message as-is).
+  entry: myhooks commitmsg
+  language: golang
+  stages: [commit-msg]
+  always_run: true

@@ -1,0 +1,62 @@
+<!-- Created with Jaspersoft Studio version 7.0.6.final using JasperReports Library version 7.0.6-5d2a603fdc6b3db8f842a83383e594f41891534d  -->
+<jasperReport name="example_document" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="f55ac191-be32-480d-975f-a836614b34b4">
+	<parameter name="Parameter1" class="java.lang.String">
+		<defaultValueExpression><![CDATA["ddd"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="Parameter2" class="java.lang.String">
+		<defaultValueExpression><![CDATA["DDDasdasd"]]></defaultValueExpression>
+	</parameter>
+	<query language="jsonql"><![CDATA[document.iddata]]></query>
+	<field name="ip_address" class="java.lang.String">
+		<description><![CDATA[ip_address]]></description>
+		<property name="net.sf.jasperreports.jsonql.field.expression" value="ip_address"/>
+	</field>
+	<field name="subnet_mask" class="java.lang.String">
+		<description><![CDATA[subnet_mask]]></description>
+		<property name="net.sf.jasperreports.jsonql.field.expression" value="subnet_mask"/>
+	</field>
+	<field name="gateway" class="java.lang.String">
+		<description><![CDATA[gateway.id]]></description>
+		<property name="net.sf.jasperreports.jsonql.field.expression" value="gateway.id"/>
+	</field>
+	<field name="hostname" class="java.lang.String">
+		<description><![CDATA[hostname]]></description>
+		<property name="net.sf.jasperreports.jsonql.field.expression" value="hostname"/>
+	</field>
+	<field name="network_provider" class="java.lang.String">
+		<description><![CDATA[network_provider]]></description>
+		<property name="net.sf.jasperreports.jsonql.field.expression" value="network_provider"/>
+	</field>
+	<field name="connection_type" class="java.lang.String">
+		<description><![CDATA[connection_type]]></description>
+		<property name="net.sf.jasperreports.jsonql.field.expression" value="connection_type"/>
+	</field>
+	<field name="speed_test_result" class="java.math.BigDecimal">
+		<description><![CDATA[speed_test_result.res]]></description>
+	</field>
+	<field name="connection_status" class="java.lang.String">
+		<description><![CDATA[connection_status]]></description>
+		<property name="net.sf.jasperreports.json.field.expression" value="connection_status"/>
+	</field>
+	<background splitType="Stretch"/>
+	<title height="79" splitType="Stretch"/>
+	<pageHeader height="35" splitType="Stretch"/>
+	<columnHeader height="61" splitType="Stretch"/>
+	<detail>
+		<band height="276" splitType="Stretch">
+			<element kind="textField" uuid="5b476266-9bc3-4fd9-bb05-50b7a8fdd42c" x="0" y="10" width="555" height="30">
+				<expression><![CDATA["Text Field" + $F{connection_type} + " " + $P{Parameter1}]]></expression>
+			</element>
+			<element kind="subreport" uuid="b7a396bd-3ab1-4952-a44b-8075bd139789" x="120" y="76" width="200" height="200">
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<expression><![CDATA[""]]></expression>
+				<parameter name="argumentOne">
+					<expression><![CDATA[$F{gateway}]]></expression>
+				</parameter>
+			</element>
+		</band>
+	</detail>
+	<columnFooter height="45" splitType="Stretch"/>
+	<pageFooter height="54" splitType="Stretch"/>
+	<summary height="42" splitType="Stretch"/>
+</jasperReport>
