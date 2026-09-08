@@ -9,11 +9,11 @@ acceptance criteria are met — create the commit shown. Do not bundle stories.
 
 ## Current state
 
-- **Done:** US-00 — scaffold (this repo's initial commit `29ea598`).
+- **Done:** US-00 (scaffold), US-01 (`xmlspan`), US-02 (`edit`).
 - **Extracted:** this is the standalone repository; `reference/` (Go source +
   `SPEC.md` + fixtures) and `EXTRACT.md` are present and the Java module lives
   at the repo root (no `refactor-java/` prefix).
-- **Next:** US-01 — `refactor(xmlspan): add StAX byte-offset XML index`.
+- **Next:** US-03 — `refactor(textrules): add pure text transforms and AST expression formatting`.
 
 ---
 
@@ -367,8 +367,8 @@ in any repo.
 | Story | Done | Commit |
 |---|---|---|
 | US-00 | ☑ | `chore: scaffold Java/Maven module with shade plugin and plan/stories` |
-| US-01 | ☐ | `refactor(xmlspan): add StAX byte-offset XML index` |
-| US-02 | ☐ | `refactor(edit): add EditSet and EditMerge` |
+| US-01 | ☑ | `refactor(xmlspan): add StAX byte-offset XML index` |
+| US-02 | ☑ | `refactor(edit): add EditSet and EditMerge` |
 | US-03 | ☐ | `refactor(textrules): add pure text transforms and AST expression formatting` |
 | US-04 | ☐ | `refactor(diffui): add terminal UI with prompt and color gating` |
 | US-05 | ☐ | `refactor(discover,git): add memoized file discovery and git plumbing` |
