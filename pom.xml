@@ -18,7 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Initial pins; confirm/adjust in US-00's first full build. -->
-        <jasperreports.version>7.0.7</jasperreports.version>
+        <jasperreports.version>7.0.6</jasperreports.version>
         <lombok.version>1.18.46</lombok.version>
         <junit.version>5.11.4</junit.version>
         <picocli.version>4.7.6</picocli.version>
@@ -32,6 +32,16 @@
         <dependency>
             <groupId>net.sf.jasperreports</groupId>
             <artifactId>jasperreports</artifactId>
+            <version>${jasperreports.version}</version>
+        </dependency>
+
+        <!-- jsonql query support (SQL -> jsonql migration in the clear step);
+             the core jar only maps language="jsonql" to the factory class, the
+             class itself lives here. Without it JRXmlLoader cannot load a
+             migrated jsonql report. -->
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports-json</artifactId>
             <version>${jasperreports.version}</version>
         </dependency>
 
