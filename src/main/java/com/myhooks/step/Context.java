@@ -1,0 +1,48 @@
+package com.myhooks.step;
+
+import com.myhooks.diffui.Choice;
+import com.myhooks.discover.FileDiscovery;
+import java.io.PrintStream;
+import java.util.function.Function;
+
+/**
+ * Shared state handed to every step and discoverer: file discovery, output
+ * streams, color gating, and the interactive prompt.
+ */
+public final class Context {
+
+    private final FileDiscovery discovery;
+    private final PrintStream out;
+    private final PrintStream err;
+    private final boolean color;
+    private final Function<String, Choice> prompt;
+
+    public Context(FileDiscovery discovery, PrintStream out, PrintStream err,
+            boolean color, Function<String, Choice> prompt) {
+        this.discovery = discovery;
+        this.out = out;
+        this.err = err;
+        this.color = color;
+        this.prompt = prompt;
+    }
+
+    public FileDiscovery discovery() {
+        return discovery;
+    }
+
+    public PrintStream out() {
+        return out;
+    }
+
+    public PrintStream err() {
+        return err;
+    }
+
+    public boolean color() {
+        return color;
+    }
+
+    public Choice prompt(String question) {
+        return prompt.apply(question);
+    }
+}
