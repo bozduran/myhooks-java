@@ -37,15 +37,17 @@ public final class LintStep implements Step {
 
     @Override
     public int run(Context context, List<String> args) {
-        return lint(context, args);
+        lint(context, args);
+        return 0;
     }
 
     @Override
     public int check(Context context, List<String> args) {
-        return lint(context, args);
+        lint(context, args);
+        return 0;
     }
 
-    private int lint(Context context, List<String> args) {
+    private void lint(Context context, List<String> args) {
         List<String> files;
         try {
             files = context.discovery().files(args);
@@ -54,12 +56,11 @@ public final class LintStep implements Step {
         }
         if (files.isEmpty()) {
             context.out().println("no .jrxml files to lint.");
-            return 0;
+            return;
         }
         for (String file : files) {
             lintFile(context, file);
         }
-        return 0;
     }
 
     private void lintFile(Context context, String file) {
