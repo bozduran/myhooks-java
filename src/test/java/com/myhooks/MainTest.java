@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 class MainTest {
 
     private static final List<String> PRE_COMMIT = List.of(
-            "clear", "format", "sort", "textcheck", "validate", "report");
+            "clear", "format", "sort", "textcheck", "validate", "lint", "report");
 
     @Test
     void dispatchesToStep() {

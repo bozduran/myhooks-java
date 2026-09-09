@@ -34,7 +34,7 @@ the author accept or reject each change.
 ## 3. Step order
 
 ```
-commitmsg (commit-msg hook) → clear → format → sort → textcheck → validate → report
+commitmsg (commit-msg hook) → clear → format → sort → textcheck → validate → lint → report
 ```
 
 | Step | What it does |
@@ -45,6 +45,7 @@ commitmsg (commit-msg hook) → clear → format → sort → textcheck → vali
 | `sort` | reorder band/frame `<element>` children by geometry (y then x, stable) |
 | `textcheck` | period space, double-space, unrenderable characters, newline normalization |
 | `validate` | JRXML XSD validation + `JasperCompileManager` compile gate on modified files |
+| `lint` | static-analysis warnings (informational, never modifies, always returns 0) |
 | `report` | include-chain (informational, never modifies, always returns 0) |
 
 The `commitmsg` step is not part of the pre-commit sequence: it runs only via

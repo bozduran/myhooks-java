@@ -34,6 +34,42 @@ public final class Query {
     }
 
     /**
+     * Returns every descendant of {@code node} (excluding {@code node} itself)
+     * in document order.
+     */
+    public static List<Node> descendants(Node node) {
+        List<Node> out = new ArrayList<>();
+        collectDescendants(node, out);
+        return out;
+    }
+
+    /**
+     * Returns the descendants of {@code node} whose {@link Node#tag()} equals
+     * {@code tag}, in document order.
+     */
+    public static List<Node> descendants(Node node, String tag) {
+        List<Node> out = new ArrayList<>();
+        collectDescendants(node, tag, out);
+        return out;
+    }
+
+    private static void collectDescendants(Node node, List<Node> out) {
+        for (Node child : node.children()) {
+            out.add(child);
+            collectDescendants(child, out);
+        }
+    }
+
+    private static void collectDescendants(Node node, String tag, List<Node> out) {
+        for (Node child : node.children()) {
+            if (child.tag().equals(tag)) {
+                out.add(child);
+            }
+            collectDescendants(child, tag, out);
+        }
+    }
+
+    /**
      * Finds the named attribute regardless of whether its value is single- or
      * double-quoted.
      */

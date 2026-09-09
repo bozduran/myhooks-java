@@ -13,7 +13,7 @@ you can correct them or skip and commit the message as-is.
 ## Steps
 
 `commitmsg` (commit-msg hook) → `clear` → `format` → `sort` → `textcheck` →
-`validate` (XSD + `JasperCompileManager` gate) → `report`.
+`validate` (XSD + `JasperCompileManager` gate) → `lint` (warnings) → `report`.
 
 Every applied change is left **unstaged** and the hook exits non-zero so you
 review the diff and re-commit.
@@ -74,7 +74,8 @@ concurrently.
 │       ├── sort/                    step 3
 │       ├── textcheck/               step 4
 │       ├── validate/                step 5
-│       └── report/                  step 6
+│       ├── lint/                    step 6 (static-analysis warnings)
+│       └── report/                  step 7
 └── src/test/java/com/myhooks/       mirrors main, one test class per unit
 ```
 

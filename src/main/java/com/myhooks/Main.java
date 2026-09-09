@@ -11,6 +11,7 @@ import com.myhooks.step.Step;
 import com.myhooks.steps.clear.ClearDiscoverer;
 import com.myhooks.steps.commitmsg.CommitMsgStep;
 import com.myhooks.steps.format.FormatDiscoverer;
+import com.myhooks.steps.lint.LintStep;
 import com.myhooks.steps.report.ReportStep;
 import com.myhooks.steps.sort.SortDiscoverer;
 import com.myhooks.steps.textcheck.TextcheckDiscoverer;
@@ -31,11 +32,11 @@ import picocli.CommandLine.Command;
  * unknown-argument validation, and {@code MYHOOKS_DISABLE} toggles.
  */
 @Command(name = "myhooks",
-        description = "JasperReports pre-commit / commit-msg hook (commitmsg + clear + format + sort + textcheck + validate + report).")
+        description = "JasperReports pre-commit / commit-msg hook (commitmsg + clear + format + sort + textcheck + validate + lint + report).")
 public final class Main {
 
     private static final List<String> PRE_COMMIT_ORDER = List.of(
-            "clear", "format", "sort", "textcheck", "validate", "report");
+            "clear", "format", "sort", "textcheck", "validate", "lint", "report");
 
     private final Map<String, Step> steps;
     private final Context context;
@@ -65,6 +66,7 @@ public final class Main {
         steps.put("sort", new FileStep("sort", "myhooks sort [file.jrxml ...]", new SortDiscoverer(), context));
         steps.put("textcheck", new FileStep("textcheck", "myhooks textcheck [file.jrxml ...]", new TextcheckDiscoverer(), context));
         steps.put("validate", new ValidateStep());
+        steps.put("lint", new LintStep());
         steps.put("report", new ReportStep());
 
         return new Main(steps, context, parseDisabled(System.getenv("MYHOOKS_DISABLE")));
