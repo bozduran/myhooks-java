@@ -5,6 +5,11 @@ in Java so it can use the real JasperReports engine. Installed as the
 `commit-msg` hook it validates the commit message; installed as the
 `pre-commit` hook it runs the file-check steps on the staged files.
 
+The `commitmsg` check enforces a Conventional Commit subject (this is the only
+thing that **blocks** a commit) and reports spelling/grammar issues found by
+[LanguageTool](https://languagetool.org/). Spelling/grammar issues never block:
+you can correct them or skip and commit the message as-is.
+
 ## Steps
 
 `commitmsg` (commit-msg hook) → `clear` → `format` → `sort` → `textcheck` →
@@ -26,7 +31,7 @@ java -jar target/myhooks-1.0.0.jar --help
 
 ```sh
 mvn package
-scripts/install-hooks.sh /path/to/your/repo
+scripts/install-hooks.sh /home/duran/JaspersoftWorkspace/MyReports
 ```
 
 This writes a `java -jar ...` wrapper as `/path/to/your/repo/.git/hooks/pre-commit`
@@ -63,7 +68,7 @@ concurrently.
 │   ├── textrules/                   pure text/expression transforms
 │   ├── includegraph/                include-chain graph build/invert/render
 │   └── steps/
-│       ├── commitmsg/               step 0
+│       ├── commitmsg/               step 0 (LanguageTool spell/grammar)
 │       ├── clear/                   step 1
 │       ├── format/                  step 2
 │       ├── sort/                    step 3

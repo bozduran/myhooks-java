@@ -4,12 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.Reader;
 import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
-import org.jline.utils.NonBlocking;
-import org.jline.utils.NonBlockingReader;
 import org.junit.jupiter.api.Test;
 
 class PromptTest {
@@ -56,14 +53,14 @@ class PromptTest {
     }
 
     @Test
-    void readKeyParsesSingleKeys() throws IOException {
+    void readKeyParsesSingleKeys() {
         assertEquals("a", readKey("a"));
         assertEquals("enter", readKey("\r"));
         assertEquals("enter", readKey("\n"));
     }
 
     @Test
-    void readKeyParsesArrowSequences() throws IOException {
+    void readKeyParsesArrowSequences() {
         assertEquals("right", readKey("\u001b[C"));
         assertEquals("left", readKey("\u001b[D"));
         assertEquals("up", readKey("\u001b[A"));
@@ -71,7 +68,7 @@ class PromptTest {
     }
 
     @Test
-    void readKeyHandlesEscapeAndUnknownSequences() throws IOException {
+    void readKeyHandlesEscapeAndUnknownSequences() {
         assertEquals("esc", readKey("\u001b"));
         assertEquals("esc", readKey("\u001bX"));
         assertEquals("esc", readKey("\u001b[Z"));
@@ -79,19 +76,62 @@ class PromptTest {
     }
 
     @Test
-    void readKeyParsesArrowSequencesNonBlocking() throws IOException {
-        assertEquals("right", readKeyRaw("\u001b[C"));
-        assertEquals("left", readKeyRaw("\u001b[D"));
-        assertEquals("up", readKeyRaw("\u001b[A"));
-        assertEquals("down", readKeyRaw("\u001b[B"));
+    void readKeyTimesOutLoneEscape() {
+        // A lone ESC: the follow-up read times out (-1) rather than returning '['.
+        KeySource timed = new KeySource() {
+            private int calls;
+
+            @Override
+            public int read() throws IOException {
+                return calls++ == 0 ? 0x1b : -1;
+            }
+
+            @Override
+            public int readTimed() throws IOException {
+                return -1;
+            }
+        };
+        assertEquals("esc", Prompt.readKey(timed));
     }
 
     @Test
-    void readKeyNonBlockingLoneEscapeAndUnknown() throws IOException {
-        assertEquals("esc", readKeyRaw("\u001b"));
-        assertEquals("esc", readKeyRaw("\u001bX"));
-        assertEquals("esc", readKeyRaw("\u001b[Z"));
-        assertEquals("", readKeyRaw(""));
+    void readKeyTimesOutUnknownArrowTail() {
+        // ESC [ then a timeout before the direction byte.
+        KeySource timed = new KeySource() {
+            private int readCalls;
+            private int timedCalls;
+
+            @Override
+            public int read() throws IOException {
+                return readCalls++ == 0 ? 0x1b : -1;
+            }
+
+            @Override
+            public int readTimed() throws IOException {
+                return timedCalls++ == 0 ? '[' : -1;
+            }
+        };
+        assertEquals("esc", Prompt.readKey(timed));
+    }
+
+    @Test
+    void readKeyParsesArrowSequenceWithTimedReads() {
+        KeySource timed = new KeySource() {
+            private int readCalls;
+            private int timedCalls;
+            private final int[] tail = {'[', 'C'};
+
+            @Override
+            public int read() throws IOException {
+                return readCalls++ == 0 ? 0x1b : -1;
+            }
+
+            @Override
+            public int readTimed() throws IOException {
+                return timedCalls < tail.length ? tail[timedCalls++] : -1;
+            }
+        };
+        assertEquals("right", Prompt.readKey(timed));
     }
 
     @Test
@@ -108,13 +148,24 @@ class PromptTest {
         assertTrue(first.contains("\u001b[7mYes\u001b[0m"));
     }
 
-    private static String readKey(String data) throws IOException {
-        return Prompt.readKey(new StringReader(data));
+    /** A {@link KeySource} over a string where the timed read is the same blocking read. */
+    private static KeySource keySource(String data) {
+        return new KeySource() {
+            private final Reader reader = new StringReader(data);
+
+            @Override
+            public int read() throws IOException {
+                return reader.read();
+            }
+
+            @Override
+            public int readTimed() throws IOException {
+                return reader.read();
+            }
+        };
     }
 
-    private static String readKeyRaw(String data) throws IOException {
-        NonBlockingReader reader = NonBlocking.nonBlocking(
-                "test", new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
-        return Prompt.readKey(reader);
+    private static String readKey(String data) {
+        return Prompt.readKey(keySource(data));
     }
 }

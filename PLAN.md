@@ -112,6 +112,11 @@ unknown-arg error, coordinate warnings, surface git failures (mutating steps
 exit 1; informational warn+0). New: JR-based unused detection, XSD + compile
 validation gate, single-quote-safe attribute edits via `xmlspan.Attr`.
 
+Post-plan change: `commitmsg` now uses [LanguageTool](https://languagetool.org/)
+(`org.languagetool:language-en`) for spelling + grammar instead of the bundled
+`misspell.dict` word list. Only the Conventional Commit semantic check blocks a
+commit; spelling/grammar issues are reported but always skippable (exit 0).
+
 ## 7. Work packages → stories
 
 | Story | What |

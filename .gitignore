@@ -2,6 +2,9 @@
 target/
 dependency-reduced-pom.xml
 
+# Local (sandbox) Maven repository mirror
+.m2repo/
+
 # Java compiled classes
 *.class
 

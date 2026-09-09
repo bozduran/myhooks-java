@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.Reader;
-import org.jline.utils.NonBlockingReader;
 
 /**
  * Interactive yes/no/all/skip prompt. On a real terminal it renders
@@ -15,11 +14,6 @@ import org.jline.utils.NonBlockingReader;
  * rather than stdin because git runs hooks with stdin bound to {@code /dev/null}.
  */
 public final class Prompt {
-
-    /** How long to wait for the rest of an escape sequence. */
-    private static final long ESC_TIMEOUT_MS = 40L;
-    /** How long to wait for typeahead when flushing after an answer. */
-    private static final long FLUSH_TIMEOUT_MS = 25L;
 
     private Prompt() {
     }
@@ -79,13 +73,12 @@ public final class Prompt {
     // ------------------------------------------------------------------
 
     static Choice askRaw(String question, Tty tty) {
-        NonBlockingReader reader = tty.rawReader();
         PrintStream out = tty.out();
         int selected = 1; // default answer is No
         while (true) {
             out.print(renderPrompt(question, selected));
             out.flush();
-            String key = readKey(reader);
+            String key = readKey(tty);
             switch (key) {
                 case "left":
                 case "up":
@@ -97,27 +90,27 @@ public final class Prompt {
                     break;
                 case "enter":
                     newline(out);
-                    drain(reader);
+                    drain(tty);
                     return Choice.values()[selected];
                 case "y":
                 case "Y":
                     newline(out);
-                    drain(reader);
+                    drain(tty);
                     return Choice.YES;
                 case "n":
                 case "N":
                     newline(out);
-                    drain(reader);
+                    drain(tty);
                     return Choice.NO;
                 case "a":
                 case "A":
                     newline(out);
-                    drain(reader);
+                    drain(tty);
                     return Choice.ALL;
                 case "s":
                 case "S":
                     newline(out);
-                    drain(reader);
+                    drain(tty);
                     return Choice.SKIP;
                 case "":
                     return Choice.NO; // EOF (terminal gone)
@@ -133,9 +126,9 @@ public final class Prompt {
     }
 
     /** Discards typeahead (the rest of "yes"/"no"/"all"/"skip" and the newline). */
-    private static void drain(NonBlockingReader in) {
+    private static void drain(KeySource in) {
         try {
-            while (in.read(FLUSH_TIMEOUT_MS) >= 0) {
+            while (in.readTimed() >= 0) {
                 // discard
             }
         } catch (IOException ignored) {
@@ -144,63 +137,22 @@ public final class Prompt {
     }
 
     /**
-     * Reads one logical key. Returns "" on EOF or read error. A JLine
-     * {@link NonBlockingReader} (real terminal) reads escape sequences with a
-     * timeout so a lone ESC is not confused with an arrow key; a plain
-     * {@link Reader} (tests) reads bytes directly.
+     * Reads one logical key. Returns "" on EOF or read error. A real terminal
+     * distinguishes a lone ESC from an arrow key with a short timed read; a
+     * plain {@link Reader} (tests) reads the escape sequence directly.
      */
-    static String readKey(Reader in) {
-        if (in instanceof NonBlockingReader nonBlocking) {
-            return readKeyNonBlocking(nonBlocking);
-        }
-        return readKeyBlocking(in);
-    }
-
-    private static String readKeyBlocking(Reader in) {
+    static String readKey(KeySource in) {
         try {
             int c = in.read();
             if (c < 0) {
                 return "";
             }
             if (c == 0x1b) {
-                int c1 = in.read();
-                int c2 = in.read();
+                int c1 = in.readTimed();
                 if (c1 != '[') {
                     return "esc";
                 }
-                return switch (c2) {
-                    case 'C' -> "right";
-                    case 'D' -> "left";
-                    case 'A' -> "up";
-                    case 'B' -> "down";
-                    default -> "esc";
-                };
-            }
-            if (c == '\r' || c == '\n') {
-                return "enter";
-            }
-            return String.valueOf((char) c);
-        } catch (IOException e) {
-            return "";
-        }
-    }
-
-    private static String readKeyNonBlocking(NonBlockingReader in) {
-        try {
-            int c = in.read();
-            if (c < 0) {
-                return "";
-            }
-            if (c == 0x1b) {
-                int c1 = in.peek(ESC_TIMEOUT_MS);
-                if (c1 != '[') {
-                    return "esc";
-                }
-                in.read(); // consume '['
-                int c2 = in.read(ESC_TIMEOUT_MS);
-                if (c2 < 0) {
-                    return "esc";
-                }
+                int c2 = in.readTimed();
                 return switch (c2) {
                     case 'C' -> "right";
                     case 'D' -> "left";

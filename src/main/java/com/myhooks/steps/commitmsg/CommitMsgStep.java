@@ -4,22 +4,28 @@ import com.myhooks.diffui.Choice;
 import com.myhooks.step.Context;
 import com.myhooks.step.Step;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.languagetool.JLanguageTool;
+import org.languagetool.Languages;
+import org.languagetool.UserConfig;
+import org.languagetool.rules.RuleMatch;
 
 /**
  * The commit-message step (non-file). Validates the Conventional Commit subject
- * and flags common misspellings using the bundled misspell dictionary. It
- * implements {@link Step} directly rather than {@code FileStep}.
+ * (a "semantic" check that blocks the commit) and reports spelling and grammar
+ * issues found by LanguageTool (a real Java spell + grammar checker). Spelling
+ * and grammar issues never block the commit: the author may correct them or
+ * skip and proceed with the message as-is.
+ *
+ * <p>Implements {@link Step} directly rather than {@code FileStep}.
  */
 public final class CommitMsgStep implements Step {
 
@@ -30,15 +36,29 @@ public final class CommitMsgStep implements Step {
     private static final Pattern SEMANTIC = Pattern.compile(
             "^(" + String.join("|", ALLOWED_TYPES) + ")(\\([^)]+\\))?!?: .+");
 
-    private static final Pattern WORD = Pattern.compile("[A-Za-z]+");
+    // Technical terms and the Conventional Commit type names are never reported
+    // as spelling mistakes (they are not English words but are valid here).
+    private static final Set<String> IGNORE_WORDS = Set.of(
+            "jsonql", "jrxml", "jasperreports", "subreport", "readme");
 
-    // Technical terms to never flag as typos (mirrors the Go ignoreRules).
-    private static final Set<String> IGNORE_RULES = Set.of(
-            "jsonql", "jrxml", "jasperreports", "subreport");
+    /** One LanguageTool match, classified as spelling or grammar. */
+    public record Issue(int from, int to, String message, List<String> suggestions, boolean spelling) {
+    }
 
-    private static final Map<String, String> DICTIONARY = loadDictionary();
+    /** Lazily initialized, shared across the single-threaded hook invocation. */
+    private static final class Engine {
+        private static final JLanguageTool TOOL = create();
 
-    public record Typo(String original, String corrected, int line) {
+        private static JLanguageTool create() {
+            List<String> ignores = new ArrayList<>(IGNORE_WORDS);
+            ignores.addAll(ALLOWED_TYPES);
+            JLanguageTool tool = new JLanguageTool(
+                    Languages.getLanguageForShortCode("en-US"), null, new UserConfig(ignores));
+            // Conventional Commit subjects are lowercase by design, so the
+            // sentence-initial capitalization rule is pure noise here.
+            tool.disableRule("UPPERCASE_SENTENCE_START");
+            return tool;
+        }
     }
 
     @Override
@@ -63,7 +83,7 @@ public final class CommitMsgStep implements Step {
 
     private int run(Context context, List<String> args, boolean checkOnly) {
         if (!args.isEmpty() && ("-h".equals(args.get(0)) || "--help".equals(args.get(0)))) {
-            context.out().println("myhooks commitmsg: validate the commit message (Conventional Commits + typo check).");
+            context.out().println("myhooks commitmsg: validate the commit message (Conventional Commits + spell/grammar check).");
             context.out().println("Usage: " + usage());
             return 0;
         }
@@ -88,51 +108,61 @@ public final class CommitMsgStep implements Step {
             context.out().println("  [semantic] allowed types: " + String.join(", ", ALLOWED_TYPES));
         }
 
-        List<Typo> typos = findTypos(message);
-        if (typos.isEmpty()) {
+        List<Issue> issues = findIssues(message);
+        if (issues.isEmpty()) {
             if (semanticError == null) {
                 context.out().println("  [ok] commit message is valid");
             }
         } else {
-            for (Typo typo : typos) {
-                context.out().printf("  [typo] %s -> %s (line %d)%n",
-                        quote(typo.original()), quote(typo.corrected()), typo.line());
+            for (Issue issue : issues) {
+                String original = message.substring(issue.from(), issue.to());
+                int line = lineOf(message, issue.from());
+                if (issue.spelling()) {
+                    String suggestion = issue.suggestions().isEmpty() ? "?" : issue.suggestions().get(0);
+                    context.out().printf("  [spell] %s -> %s (line %d)%n",
+                            quote(original), quote(suggestion), line);
+                } else {
+                    String suggestion = issue.suggestions().isEmpty()
+                            ? "" : " -> " + quote(issue.suggestions().get(0));
+                    context.out().printf("  [grammar] %s%s (line %d)%n", issue.message(), suggestion, line);
+                }
             }
         }
 
         if (checkOnly) {
             return 0;
         }
+        // Only the semantic check blocks the commit.
         if (semanticError != null) {
             return 1;
         }
-        if (typos.isEmpty()) {
+        if (issues.isEmpty()) {
             return 0;
         }
 
-        context.out().println("  Correct the typo(s)? yes = correct, no = stop commit, skip = accept as-is.");
-        Choice choice = context.prompt("Correct the typo(s) above?");
+        context.out().println("  Spelling/grammar issues never block the commit.");
+        Choice choice = context.prompt("Correct the spelling errors above?");
         switch (choice) {
             case YES:
             case ALL:
-                String corrected = correctMessage(message);
+                String corrected = correctMessage(message, issues);
                 if (!corrected.equals(message)) {
                     try {
                         Files.writeString(Path.of(path), corrected, StandardCharsets.UTF_8);
-                        context.out().println("  [fix] typos corrected in commit message");
+                        context.out().println("  [fix] spelling corrected in commit message");
                     } catch (IOException e) {
                         context.err().println("myhooks commitmsg: " + e.getMessage());
                         return 1;
                     }
+                } else {
+                    context.out().println("  [skip] no spelling to auto-correct (grammar issues left for manual review)");
                 }
                 return 0;
             case SKIP:
-                context.out().println("  [skip] commit message left as-is");
-                return 0;
             case NO:
             default:
-                context.err().println("\nmyhooks commitmsg: commit stopped — fix the typos, or re-run and choose skip.");
-                return 1;
+                context.out().println("  [skip] commit message left as-is");
+                return 0;
         }
     }
 
@@ -156,51 +186,38 @@ public final class CommitMsgStep implements Step {
         return null;
     }
 
-    static List<Typo> findTypos(String message) {
-        List<Typo> typos = new ArrayList<>();
-        String[] lines = message.split("\n", -1);
-        for (int i = 0; i < lines.length; i++) {
-            Matcher matcher = WORD.matcher(lines[i]);
-            while (matcher.find()) {
-                String word = matcher.group();
-                String lower = word.toLowerCase();
-                String correction = IGNORE_RULES.contains(lower) ? null : DICTIONARY.get(lower);
-                if (correction != null) {
-                    typos.add(new Typo(word, applyCase(word, correction), i + 1));
-                }
-            }
+    /** Runs LanguageTool over the message and returns spelling and grammar issues. */
+    static List<Issue> findIssues(String message) {
+        List<RuleMatch> matches;
+        try {
+            matches = Engine.TOOL.check(message);
+        } catch (IOException e) {
+            throw new IllegalStateException("language check failed", e);
         }
-        return typos;
+        List<Issue> issues = new ArrayList<>(matches.size());
+        for (RuleMatch match : matches) {
+            issues.add(new Issue(
+                    match.getFromPos(),
+                    match.getToPos(),
+                    match.getMessage(),
+                    List.copyOf(match.getSuggestedReplacements()),
+                    match.getRule().isDictionaryBasedSpellingRule()));
+        }
+        return List.copyOf(issues);
     }
 
-    static String correctMessage(String message) {
-        String[] lines = message.split("\n", -1);
-        StringBuilder out = new StringBuilder(message.length());
-        for (int i = 0; i < lines.length; i++) {
-            if (i > 0) {
-                out.append('\n');
-            }
-            out.append(correctLine(lines[i]));
+    /** Applies the first suggestion of each spelling issue; grammar issues are left untouched. */
+    static String correctMessage(String message, List<Issue> issues) {
+        List<Issue> spelling = issues.stream()
+                .filter(Issue::spelling)
+                .filter(issue -> !issue.suggestions().isEmpty())
+                .sorted(Comparator.comparingInt(Issue::from).reversed())
+                .toList();
+        StringBuilder out = new StringBuilder(message);
+        for (Issue issue : spelling) {
+            String original = message.substring(issue.from(), issue.to());
+            out.replace(issue.from(), issue.to(), applyCase(original, issue.suggestions().get(0)));
         }
-        return out.toString();
-    }
-
-    private static String correctLine(String line) {
-        Matcher matcher = WORD.matcher(line);
-        StringBuilder out = new StringBuilder(line.length());
-        while (matcher.find()) {
-            String word = matcher.group();
-            String replacement = word;
-            String lower = word.toLowerCase();
-            if (!IGNORE_RULES.contains(lower)) {
-                String correction = DICTIONARY.get(lower);
-                if (correction != null) {
-                    replacement = applyCase(word, correction);
-                }
-            }
-            matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
-        }
-        matcher.appendTail(out);
         return out.toString();
     }
 
@@ -208,6 +225,16 @@ public final class CommitMsgStep implements Step {
         String trimmed = message.strip();
         int newline = trimmed.indexOf('\n');
         return (newline >= 0 ? trimmed.substring(0, newline) : trimmed).strip();
+    }
+
+    private static int lineOf(String text, int pos) {
+        int line = 1;
+        for (int i = 0; i < pos && i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                line++;
+            }
+        }
+        return line;
     }
 
     private static String applyCase(String original, String correction) {
@@ -218,25 +245,5 @@ public final class CommitMsgStep implements Step {
             return correction.substring(0, 1).toUpperCase() + correction.substring(1);
         }
         return correction.toLowerCase();
-    }
-
-    private static Map<String, String> loadDictionary() {
-        Map<String, String> dictionary = new HashMap<>();
-        try (InputStream in = CommitMsgStep.class.getResourceAsStream("misspell.dict")) {
-            if (in == null) {
-                throw new IllegalStateException("misspell.dict not found on classpath");
-            }
-            for (String line : new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\n")) {
-                int tab = line.indexOf('\t');
-                if (tab > 0) {
-                    dictionary.put(line.substring(0, tab), line.substring(tab + 1));
-                }
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("failed to load misspell.dict", e);
-        }
-        dictionary.entrySet().removeIf(entry ->
-                IGNORE_RULES.contains(entry.getKey()) || IGNORE_RULES.contains(entry.getValue()));
-        return Map.copyOf(dictionary);
     }
 }

@@ -15,8 +15,10 @@ the author accept or reject each change.
 
 ## 2. Goals
 
-- Require a Conventional Commit subject and flag common misspellings
-  (`commit-msg` hook).
+- Require a Conventional Commit subject and report spelling/grammar issues
+  with LanguageTool (`commit-msg` hook). Only the semantic subject check
+  blocks a commit; spelling/grammar issues never block — the author may
+  correct them or skip and proceed.
 - Remove dead declarations (unused `<parameter>`/`<field>`/`<variable>`).
 - Migrate SQL `<query>` elements and legacy
   `net.sf.jasperreports.json.field.expression` properties to the jsonql
@@ -37,7 +39,7 @@ commitmsg (commit-msg hook) → clear → format → sort → textcheck → vali
 
 | Step | What it does |
 | --- | --- |
-| `commitmsg` | Conventional Commit subject + misspell dictionary typo check |
+| `commitmsg` | Conventional Commit subject (blocks) + LanguageTool spell/grammar report (non-blocking) |
 | `clear` | SQL→jsonql query migration, unused declarations, jsonql property fixes, description↔jsonql sync |
 | `format` | `positionType`/`textAdjust` attributes, `<jasperReport name>` alignment, Java-expression formatting (AST) |
 | `sort` | reorder band/frame `<element>` children by geometry (y then x, stable) |
@@ -46,7 +48,9 @@ commitmsg (commit-msg hook) → clear → format → sort → textcheck → vali
 | `report` | include-chain (informational, never modifies, always returns 0) |
 
 The `commitmsg` step is not part of the pre-commit sequence: it runs only via
-the `commit-msg` hook (or an explicit `myhooks commitmsg <message-file>`).
+the `commit-msg` hook (or an explicit `myhooks commitmsg <message-file>`). It
+returns 1 only when the subject is not a Conventional Commit; spelling and
+grammar issues reported by LanguageTool are always skippable (exit 0).
 
 ## 4. Command-line interface
 
@@ -80,6 +84,8 @@ myhooks -h | --help               print usage
 
 - Every mutating step returns 1 when it applied changes (left unstaged) or hit
   an error. `report` always returns 0.
+- `commitmsg` returns 1 only for a semantic (Conventional Commit subject)
+  failure; spelling/grammar issues never block the commit.
 - All steps run regardless of each other's results, so the author reviews all
   changes in one pass; any step returning 1 makes the overall exit code 1.
 

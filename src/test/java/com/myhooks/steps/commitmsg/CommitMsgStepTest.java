@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -58,27 +57,52 @@ class CommitMsgStepTest {
     }
 
     @Test
-    void findTyposFlagsKnownMisspellings() {
-        List<CommitMsgStep.Typo> typos = CommitMsgStep.findTypos("Teh report has an adress and is seperate");
-        assertEquals(3, typos.size());
-        Map<String, String> want = Map.of("teh", "the", "adress", "address", "seperate", "separate");
-        for (CommitMsgStep.Typo typo : typos) {
-            assertEquals(want.get(typo.original().toLowerCase()), typo.corrected().toLowerCase());
+    void findIssuesFlagsMisspellings() {
+        List<CommitMsgStep.Issue> issues = CommitMsgStep.findIssues("teh adress is seperate");
+        assertEquals(3, issues.size());
+        assertTrue(issues.stream().allMatch(CommitMsgStep.Issue::spelling));
+        List<String> suggestions = issues.stream()
+                .flatMap(issue -> issue.suggestions().stream())
+                .toList();
+        assertTrue(suggestions.contains("address"));
+        assertTrue(suggestions.contains("separate"));
+    }
+
+    @Test
+    void findIssuesFlagsGrammar() {
+        List<CommitMsgStep.Issue> issues = CommitMsgStep.findIssues("He go to school every day");
+        CommitMsgStep.Issue grammar = issues.stream()
+                .filter(issue -> !issue.spelling())
+                .findFirst()
+                .orElseThrow();
+        assertTrue(grammar.suggestions().contains("goes"));
+    }
+
+    @Test
+    void findIssuesTreatsTechnicalAndCommitWordsAsClean() {
+        for (String clean : List.of(
+                "feat: add commit message check",
+                "fix: correct an issue",
+                "docs: update readme",
+                "jsonql field expression for the report",
+                "This is a correct sentence.")) {
+            assertEquals(List.of(), CommitMsgStep.findIssues(clean), clean);
         }
     }
 
     @Test
-    void correctMessagePreservesCase() {
-        String out = CommitMsgStep.correctMessage("Teh teh TEH and an adress");
-        assertTrue(out.contains("The"));
-        assertTrue(out.contains("the"));
-        assertTrue(out.contains("THE"));
-        assertTrue(out.contains("address"));
+    void correctMessageAppliesSpellingSuggestions() {
+        String message = "teh adress is seperate";
+        assertEquals("the address is separate",
+                CommitMsgStep.correctMessage(message, CommitMsgStep.findIssues(message)));
     }
 
     @Test
-    void technicalAndNonEnglishWordsAreNotFlagged() {
-        assertEquals(List.of(), CommitMsgStep.findTypos("jsonql field expression für den Bericht über jasperreports"));
+    void correctMessagePreservesTitleCaseAndLeavesGrammarUntouched() {
+        String message = "Teh report and an adress";
+        String corrected = CommitMsgStep.correctMessage(message, CommitMsgStep.findIssues(message));
+        assertTrue(corrected.contains("The report"));
+        assertTrue(corrected.contains("address"));
     }
 
     @Test
@@ -89,24 +113,38 @@ class CommitMsgStepTest {
     }
 
     @Test
-    void runTypoCorrectReturnsZeroAndRewrites() throws Exception {
+    void runSemanticBlockPrecedesSpellingAndLeavesFile() throws Exception {
+        Path file = write("add a check without a type\n\nTeh adress is seperate\n");
+        assertEquals(1, new CommitMsgStep().run(context(List.of()), List.of(file.toString())));
+        assertEquals("add a check without a type\n\nTeh adress is seperate\n", Files.readString(file));
+    }
+
+    @Test
+    void runSpellingYesReturnsZeroAndRewrites() throws Exception {
         Path file = write("feat: add check\n\nTeh adress is seperate\n");
         assertEquals(0, new CommitMsgStep().run(context(List.of(Choice.YES)), List.of(file.toString())));
         assertTrue(Files.readString(file).contains("The address is separate"));
     }
 
     @Test
-    void runTypoNoBlocks() throws Exception {
+    void runSpellingNoProceedsAndLeavesFile() throws Exception {
         Path file = write("feat: add check\n\nTeh adress is seperate\n");
-        assertEquals(1, new CommitMsgStep().run(context(List.of(Choice.NO)), List.of(file.toString())));
+        assertEquals(0, new CommitMsgStep().run(context(List.of(Choice.NO)), List.of(file.toString())));
         assertEquals("feat: add check\n\nTeh adress is seperate\n", Files.readString(file));
     }
 
     @Test
-    void runTypoSkipReturnsZero() throws Exception {
+    void runSpellingSkipProceeds() throws Exception {
         Path file = write("feat: add check\n\nTeh adress is seperate\n");
         assertEquals(0, new CommitMsgStep().run(context(List.of(Choice.SKIP)), List.of(file.toString())));
         assertEquals("feat: add check\n\nTeh adress is seperate\n", Files.readString(file));
+    }
+
+    @Test
+    void runGrammarNeverBlocks() throws Exception {
+        Path file = write("feat: add check\n\nHe go to school every day\n");
+        assertEquals(0, new CommitMsgStep().run(context(List.of(Choice.NO)), List.of(file.toString())));
+        assertEquals("feat: add check\n\nHe go to school every day\n", Files.readString(file));
     }
 
     @Test
