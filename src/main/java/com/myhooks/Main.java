@@ -55,7 +55,7 @@ public final class Main {
     public static Main production() {
         FileDiscovery discovery = new FileDiscovery();
         boolean color = DiffRenderer.colorEnabled(Terminals.available());
-        Context context = new Context(discovery, System.out, System.err, color,
+        Context context = new Context(discovery, System.out, System.err, color, true,
                 Prompt::ask, Freeform::ask);
 
         Map<String, Step> steps = new LinkedHashMap<>();

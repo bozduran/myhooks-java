@@ -105,6 +105,32 @@ final class Tty implements AutoCloseable, KeySource {
         }
     }
 
+    /** Reads one logical key (arrow sequence or single char) in raw mode. */
+    String readKey() {
+        return Prompt.readKey(this);
+    }
+
+    /** Restores the terminal to the settings saved when raw mode was entered. */
+    void cook() {
+        if (savedSettings == null) {
+            return;
+        }
+        try {
+            stty(savedSettings);
+        } catch (IOException ignored) {
+            // best-effort
+        }
+    }
+
+    /** Re-enters raw mode after a temporary {@link #cook()}. */
+    void raw() {
+        try {
+            stty("-icanon", "-echo", "min", "1", "time", "0");
+        } catch (IOException ignored) {
+            // best-effort
+        }
+    }
+
     BufferedReader lineReader() {
         return lineReader;
     }

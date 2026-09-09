@@ -15,20 +15,27 @@ public final class Context {
     private final PrintStream out;
     private final PrintStream err;
     private final boolean color;
+    private final boolean tui;
     private final Function<String, Choice> prompt;
     private final Function<String, String> freeform;
 
     public Context(FileDiscovery discovery, PrintStream out, PrintStream err,
             boolean color, Function<String, Choice> prompt) {
-        this(discovery, out, err, color, prompt, question -> "");
+        this(discovery, out, err, color, false, prompt, question -> "");
     }
 
     public Context(FileDiscovery discovery, PrintStream out, PrintStream err,
             boolean color, Function<String, Choice> prompt, Function<String, String> freeform) {
+        this(discovery, out, err, color, false, prompt, freeform);
+    }
+
+    public Context(FileDiscovery discovery, PrintStream out, PrintStream err,
+            boolean color, boolean tui, Function<String, Choice> prompt, Function<String, String> freeform) {
         this.discovery = discovery;
         this.out = out;
         this.err = err;
         this.color = color;
+        this.tui = tui;
         this.prompt = prompt;
         this.freeform = freeform;
     }
@@ -47,6 +54,11 @@ public final class Context {
 
     public boolean color() {
         return color;
+    }
+
+    /** Whether the inline review TUI may be used (production) instead of line prompts (tests). */
+    public boolean tui() {
+        return tui;
     }
 
     public Choice prompt(String question) {

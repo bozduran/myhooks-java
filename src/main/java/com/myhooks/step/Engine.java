@@ -1,6 +1,7 @@
 package com.myhooks.step;
 
 import com.myhooks.diffui.Choice;
+import com.myhooks.diffui.Review;
 import com.myhooks.edit.EditSet;
 import com.myhooks.git.GitException;
 import java.io.IOException;
@@ -9,13 +10,16 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Shared scaffolding for the file-oriented steps: discover files, list each
  * fix-group, prompt per fix (All = rest of the current group, Skip = whole
  * file), accumulate approved edits, apply them once, and atomic-write the
- * result. {@link #check} is report-only and never writes.
+ * result. On a real terminal the fixes are reviewed through the {@link Review}
+ * inline TUI; otherwise a line-based per-fix prompt is used. {@link #check} is
+ * report-only and never writes.
  */
 public final class Engine {
 
@@ -33,6 +37,10 @@ public final class Engine {
 
     public int check(List<String> args) {
         return run(args, true);
+    }
+
+    private enum Outcome {
+        UNCHANGED, MODIFIED, QUIT
     }
 
     private int run(List<String> args, boolean checkOnly) {
@@ -68,15 +76,19 @@ public final class Engine {
             }
 
             context.out().println("checking " + path);
-            list(groups);
 
             if (checkOnly) {
+                list(groups);
                 context.out().println("  [report] " + path + ": fixes found (not applied)");
                 continue;
             }
 
-            if (applyInteractively(path, groups)) {
+            Outcome outcome = applyInteractively(path, groups);
+            if (outcome == Outcome.MODIFIED) {
                 stopCommit = true;
+            }
+            if (outcome == Outcome.QUIT) {
+                break;
             }
         }
         return stopCommit ? 1 : 0;
@@ -92,8 +104,40 @@ public final class Engine {
         }
     }
 
-    /** Returns true when the file was modified. */
-    private boolean applyInteractively(Path path, List<Group> groups) {
+    private Outcome applyInteractively(Path path, List<Group> groups) {
+        if (context.tui()) {
+            return applyViaReview(path, groups);
+        }
+        return applySequentially(path, groups);
+    }
+
+    private Outcome applyViaReview(Path path, List<Group> groups) {
+        EditSet edits = new EditSet();
+        List<Review.Item> items = new ArrayList<>();
+        for (Group group : groups) {
+            for (Fix fix : group.fixes()) {
+                items.add(new Review.Item(group.label(), fix.describe(), fix.diff(), () -> fix.apply(edits)));
+            }
+        }
+
+        Review.Outcome outcome = Review.run(items, context.out(), context.color());
+        if (outcome == Review.Outcome.UNAVAILABLE) {
+            return applySequentially(path, groups);
+        }
+        if (outcome == Review.Outcome.SKIPPED) {
+            context.out().println("  [skip] " + path + " left unchanged");
+            return Outcome.UNCHANGED;
+        }
+        if (outcome == Review.Outcome.QUIT) {
+            return Outcome.QUIT;
+        }
+        return writeIfChanged(path, edits);
+    }
+
+    /** Line-based per-fix prompting, used when no controlling terminal is available. */
+    private Outcome applySequentially(Path path, List<Group> groups) {
+        list(groups);
+
         EditSet edits = new EditSet();
         boolean anyApplied = false;
         boolean skipFile = false;
@@ -133,26 +177,29 @@ public final class Engine {
 
         if (skipFile) {
             context.out().println("  [skip] " + path + " left unchanged");
-            return false;
+            return Outcome.UNCHANGED;
         }
         if (!anyApplied) {
             context.out().println("  [ok] " + path);
-            return false;
+            return Outcome.UNCHANGED;
         }
+        return writeIfChanged(path, edits);
+    }
 
+    private Outcome writeIfChanged(Path path, EditSet edits) {
         try {
             String raw = Files.readString(path, StandardCharsets.UTF_8);
             String updated = edits.apply(raw);
             if (updated.equals(raw)) {
                 context.out().println("  [ok] " + path);
-                return false;
+                return Outcome.UNCHANGED;
             }
             atomicWrite(path, updated);
             context.out().println("  [stop] " + path + ": fixes applied and left UNSTAGED for review.");
-            return true;
+            return Outcome.MODIFIED;
         } catch (IOException e) {
             context.err().println("myhooks: " + path + ": " + e.getMessage());
-            return false;
+            return Outcome.UNCHANGED;
         }
     }
 
