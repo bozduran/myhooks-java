@@ -37,9 +37,25 @@ class ClearLineRemovalIntegrationTest {
 
         String out = runClear(content);
 
-        assertEquals(content.replace(decls, "\n"), out);
+        // Neither declaration is alone on the line, so only their spans go; the
+        // line's indentation and terminator remain (a blank line).
+        assertEquals(content.replace(decls, "\t\n"), out);
         assertFalse(out.contains("name=\"A\""), out);
         assertFalse(out.contains("name=\"B\""), out);
+    }
+
+    @Test
+    void unusedBeforeUsedOnOneLineKeepsTheUsedIndentation() throws Exception {
+        String unused = "\t<field name=\"Unused\" class=\"java.lang.String\"/>";
+        String used = "<field name=\"Used\" class=\"java.lang.String\"/>";
+        String content = report(unused + used + "\n", "$F{Used}", "\n");
+
+        String out = runClear(content);
+
+        // The unused declaration's span goes without taking the line's
+        // indentation, which belongs to the used declaration that follows it.
+        assertEquals(content.replace(unused + used, "\t" + used), out);
+        assertTrue(out.contains("\t" + used), out);
     }
 
     @Test
@@ -73,8 +89,8 @@ class ClearLineRemovalIntegrationTest {
 
         String out = runClear(content);
 
-        assertEquals(content.replace(decls, "<!-- keep -->\n"), out);
-        assertTrue(out.contains("<!-- keep -->"), out);
+        assertEquals(content.replace(decls, "\t<!-- keep -->\n"), out);
+        assertTrue(out.contains("\t<!-- keep -->"), out);
     }
 
     @Test

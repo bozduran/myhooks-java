@@ -317,34 +317,31 @@ public final class ClearDiscoverer implements Discoverer {
     }
 
     /**
-     * The span to delete for a whole-element removal: the element plus its
-     * indentation and line terminator when it is the only thing on its line, or
-     * just the element when other content shares the line. This never removes a
-     * neighbouring declaration or comment, and consumes a CRLF pair whole.
+     * The span to delete for a whole-element removal. When the element is alone
+     * on its line (only whitespace before and after it) the indentation and the
+     * line terminator are removed with it; otherwise only the element itself is
+     * removed, so a declaration or comment sharing the line keeps its
+     * indentation and line break. This never removes a neighbouring element and
+     * consumes a CRLF pair whole.
      */
     private static int[] removalSpan(String raw, int start, int end) {
-        int from = start;
-        boolean alone = raw.substring(lineStart(raw, start), start).isBlank();
-        if (alone) {
-            from = lineStart(raw, start);
+        int lineStart = lineStart(raw, start);
+        int lineEnd = end;
+        while (lineEnd < raw.length() && raw.charAt(lineEnd) != '\n' && raw.charAt(lineEnd) != '\r') {
+            lineEnd++;
         }
-        int to = end;
-        if (alone) {
-            int lineEnd = end;
-            while (lineEnd < raw.length() && raw.charAt(lineEnd) != '\n' && raw.charAt(lineEnd) != '\r') {
-                lineEnd++;
-            }
-            if (raw.substring(end, lineEnd).isBlank()) {
-                to = lineEnd;
-                if (to < raw.length() && raw.charAt(to) == '\r') {
-                    to++;
-                }
-                if (to < raw.length() && raw.charAt(to) == '\n') {
-                    to++;
-                }
-            }
+        boolean alone = raw.substring(lineStart, start).isBlank() && raw.substring(end, lineEnd).isBlank();
+        if (!alone) {
+            return new int[] {start, end};
         }
-        return new int[] {from, to};
+        int to = lineEnd;
+        if (to < raw.length() && raw.charAt(to) == '\r') {
+            to++;
+        }
+        if (to < raw.length() && raw.charAt(to) == '\n') {
+            to++;
+        }
+        return new int[] {lineStart, to};
     }
 
     /**
