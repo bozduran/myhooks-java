@@ -11,6 +11,7 @@ import com.myhooks.git.GitStaged;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
@@ -69,6 +70,28 @@ class EngineTest {
         assertEquals("abc", Files.readString(file), "the file must be left untouched");
         assertTrue(err.toString().contains("no interactive terminal"),
                 "the failure must be reported on stderr: " + err);
+    }
+
+    @Test
+    void fileChangedDuringPromptIsNotOverwrittenWithStaleEdits() throws Exception {
+        Path file = write("test.jrxml", "abcd");
+        Fix fix = new EditFix("replace a with A", "a", "A", new Edit(0, 1, "A"), false);
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(new ByteArrayOutputStream());
+        Context context = new Context(new FileDiscovery(), out, new PrintStream(err), false, q -> {
+            try {
+                // Same length, so the stale edit offsets remain in range.
+                Files.writeString(file, "wxyz");
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            return Choice.YES;
+        });
+        Engine engine = new Engine(oneGroup(fix), context);
+
+        assertEquals(1, engine.run(List.of(file.toString())));
+        assertEquals("wxyz", Files.readString(file), "the concurrent change must be preserved");
+        assertTrue(err.toString().contains("changed"), "the stale snapshot must be reported: " + err);
     }
 
     @Test

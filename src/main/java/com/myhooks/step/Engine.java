@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -61,6 +62,18 @@ public final class Engine {
         boolean stopCommit = false;
         for (String file : files) {
             Path path = Path.of(file);
+            // Snapshot before discovery: the edits are computed from this state,
+            // and the interactive review can pause for a long time.
+            byte[] snapshot = null;
+            if (!checkOnly) {
+                try {
+                    snapshot = Files.readAllBytes(path);
+                } catch (IOException e) {
+                    context.err().println("myhooks: " + path + ": " + e.getMessage());
+                    stopCommit = true;
+                    continue;
+                }
+            }
             List<Group> groups;
             try {
                 groups = discoverer.discover(context, path);
@@ -87,7 +100,7 @@ public final class Engine {
 
             Outcome outcome;
             try {
-                outcome = applyInteractively(path, groups);
+                outcome = applyInteractively(path, groups, snapshot);
             } catch (NoTerminalException e) {
                 context.err().println("myhooks: " + e.getMessage());
                 context.err().println("myhooks: no interactive terminal; commit blocked so fixes are not silently skipped.");
@@ -114,14 +127,14 @@ public final class Engine {
         }
     }
 
-    private Outcome applyInteractively(Path path, List<Group> groups) {
+    private Outcome applyInteractively(Path path, List<Group> groups, byte[] snapshot) {
         if (context.tui()) {
-            return applyViaReview(path, groups);
+            return applyViaReview(path, groups, snapshot);
         }
-        return applySequentially(path, groups);
+        return applySequentially(path, groups, snapshot);
     }
 
-    private Outcome applyViaReview(Path path, List<Group> groups) {
+    private Outcome applyViaReview(Path path, List<Group> groups, byte[] snapshot) {
         EditSet edits = new EditSet();
         List<Review.Item> items = new ArrayList<>();
         for (Group group : groups) {
@@ -132,7 +145,7 @@ public final class Engine {
 
         Review.Outcome outcome = Review.run(items, context.color());
         if (outcome == Review.Outcome.UNAVAILABLE) {
-            return applySequentially(path, groups);
+            return applySequentially(path, groups, snapshot);
         }
         if (outcome == Review.Outcome.SKIPPED) {
             context.out().println("  [skip] " + path + " left unchanged");
@@ -141,11 +154,11 @@ public final class Engine {
         if (outcome == Review.Outcome.QUIT) {
             return Outcome.QUIT;
         }
-        return writeIfChanged(path, edits);
+        return writeIfChanged(path, edits, snapshot);
     }
 
     /** Line-based per-fix prompting, used when no controlling terminal is available. */
-    private Outcome applySequentially(Path path, List<Group> groups) {
+    private Outcome applySequentially(Path path, List<Group> groups, byte[] snapshot) {
         list(groups);
 
         EditSet edits = new EditSet();
@@ -193,12 +206,18 @@ public final class Engine {
             context.out().println("  [ok] " + path);
             return Outcome.UNCHANGED;
         }
-        return writeIfChanged(path, edits);
+        return writeIfChanged(path, edits, snapshot);
     }
 
-    private Outcome writeIfChanged(Path path, EditSet edits) {
+    private Outcome writeIfChanged(Path path, EditSet edits, byte[] snapshot) {
         try {
-            XmlSource source = XmlSource.read(path);
+            byte[] current = Files.readAllBytes(path);
+            if (snapshot != null && !Arrays.equals(snapshot, current)) {
+                context.err().println("myhooks: " + path
+                        + ": file changed while it was being reviewed; nothing written, re-run the hook.");
+                return Outcome.FAILED;
+            }
+            XmlSource source = XmlSource.of(current);
             String updated = edits.apply(source.text());
             if (updated.equals(source.text())) {
                 context.out().println("  [ok] " + path);
