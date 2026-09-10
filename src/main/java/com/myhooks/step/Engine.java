@@ -5,8 +5,8 @@ import com.myhooks.diffui.NoTerminalException;
 import com.myhooks.diffui.Review;
 import com.myhooks.edit.EditSet;
 import com.myhooks.git.GitException;
+import com.myhooks.io.XmlSource;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -197,13 +197,13 @@ public final class Engine {
 
     private Outcome writeIfChanged(Path path, EditSet edits) {
         try {
-            String raw = Files.readString(path, StandardCharsets.UTF_8);
-            String updated = edits.apply(raw);
-            if (updated.equals(raw)) {
+            XmlSource source = XmlSource.read(path);
+            String updated = edits.apply(source.text());
+            if (updated.equals(source.text())) {
                 context.out().println("  [ok] " + path);
                 return Outcome.UNCHANGED;
             }
-            atomicWrite(path, updated);
+            atomicWrite(path, source.encode(updated));
             context.out().println("  [stop] " + path + ": fixes applied and left UNSTAGED for review.");
             return Outcome.MODIFIED;
         } catch (IOException e) {
@@ -212,12 +212,12 @@ public final class Engine {
         }
     }
 
-    private static void atomicWrite(Path path, String content) throws IOException {
+    private static void atomicWrite(Path path, byte[] content) throws IOException {
         Path absolute = path.toAbsolutePath();
         Path dir = absolute.getParent();
         Path tmp = Files.createTempFile(dir, absolute.getFileName().toString(), ".tmp");
         try {
-            Files.writeString(tmp, content, StandardCharsets.UTF_8);
+            Files.write(tmp, content);
             try {
                 Files.setPosixFilePermissions(tmp, Files.getPosixFilePermissions(path));
             } catch (UnsupportedOperationException ignored) {

@@ -1,6 +1,7 @@
 package com.myhooks.steps.format;
 
 import com.myhooks.edit.Edit;
+import com.myhooks.io.XmlSource;
 import com.myhooks.jrutil.JrStringUtil;
 import com.myhooks.step.Context;
 import com.myhooks.step.Discoverer;
@@ -12,8 +13,6 @@ import com.myhooks.xmlspan.Attr;
 import com.myhooks.xmlspan.Node;
 import com.myhooks.xmlspan.Query;
 import com.myhooks.xmlspan.XmlScanner;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +39,7 @@ public final class FormatDiscoverer implements Discoverer {
 
     @Override
     public List<Group> discover(Context context, Path path) throws Exception {
-        String text = Files.readString(path, StandardCharsets.UTF_8);
+        String text = XmlSource.read(path).text();
         Node root = XmlScanner.scan(text);
         List<Fix> fixes = new ArrayList<>();
         collect(root, text, baseName(path), context.color(), fixes);

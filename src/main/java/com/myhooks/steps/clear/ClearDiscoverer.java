@@ -3,6 +3,7 @@ package com.myhooks.steps.clear;
 import com.myhooks.diffui.DiffRenderer;
 import com.myhooks.edit.Edit;
 import com.myhooks.edit.EditSet;
+import com.myhooks.io.XmlSource;
 import com.myhooks.jrutil.JrExpressions;
 import com.myhooks.jrutil.JrSchema;
 import com.myhooks.jrutil.JrStringUtil;
@@ -15,7 +16,6 @@ import com.myhooks.xmlspan.Attr;
 import com.myhooks.xmlspan.Node;
 import com.myhooks.xmlspan.Query;
 import com.myhooks.xmlspan.XmlScanner;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -71,7 +71,7 @@ public final class ClearDiscoverer implements Discoverer {
 
     @Override
     public List<Group> discover(Context context, Path path) throws Exception {
-        String raw = Files.readString(path, StandardCharsets.UTF_8);
+        String raw = XmlSource.read(path).text();
         Node root = XmlScanner.scan(raw);
         List<Declaration> declarations = parseDeclarations(root, raw);
         List<Group> groups = new ArrayList<>();

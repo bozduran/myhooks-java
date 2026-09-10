@@ -5,10 +5,10 @@ import com.myhooks.includegraph.Graph;
 import com.myhooks.includegraph.Invert;
 import com.myhooks.includegraph.Render;
 import com.myhooks.includegraph.TreeNode;
+import com.myhooks.io.XmlSource;
 import com.myhooks.step.Context;
 import com.myhooks.step.Step;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -93,7 +93,7 @@ public final class ReportStep implements Step {
 
     private static void readInto(Map<String, String> files, String path) {
         try {
-            files.put(path, Files.readString(Path.of(path)));
+            files.put(path, XmlSource.read(Path.of(path)).text());
         } catch (IOException ignored) {
             // unreadable files are skipped
         }

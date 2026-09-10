@@ -1,14 +1,13 @@
 package com.myhooks.steps.lint;
 
 import com.myhooks.git.GitException;
+import com.myhooks.io.XmlSource;
 import com.myhooks.step.Context;
 import com.myhooks.step.Step;
 import com.myhooks.steps.lint.rules.ConstantPrintWhen;
 import com.myhooks.xmlspan.Node;
 import com.myhooks.xmlspan.XmlScanner;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -66,7 +65,7 @@ public final class LintStep implements Step {
     private void lintFile(Context context, String file) {
         String raw;
         try {
-            raw = Files.readString(Path.of(file), StandardCharsets.UTF_8);
+            raw = XmlSource.read(Path.of(file)).text();
         } catch (IOException e) {
             context.err().println("myhooks: " + file + ": " + e.getMessage());
             return;
