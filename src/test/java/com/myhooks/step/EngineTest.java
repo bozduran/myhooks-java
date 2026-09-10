@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -70,6 +71,26 @@ class EngineTest {
         assertEquals("abc", Files.readString(file), "the file must be left untouched");
         assertTrue(err.toString().contains("no interactive terminal"),
                 "the failure must be reported on stderr: " + err);
+    }
+
+    @Test
+    void symlinkedFileIsWrittenThroughToItsTarget() throws Exception {
+        Path target = write("target.jrxml", "abcd");
+        Path link = dir.resolve("link.jrxml");
+        try {
+            Files.createSymbolicLink(link, target.getFileName());
+        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+            Assumptions.assumeTrue(false, "symbolic links unavailable: " + e);
+            return;
+        }
+        Fix fix = new EditFix("replace a with A", "a", "A", new Edit(0, 1, "A"), false);
+        Engine engine = new Engine(oneGroup(fix), context(new FileDiscovery(), List.of(Choice.YES)));
+
+        assertEquals(1, engine.run(List.of(link.toString())));
+
+        assertTrue(Files.isSymbolicLink(link), "the symlink must not be replaced by a regular file");
+        assertEquals("Abcd", Files.readString(target), "the link target must receive the edit");
+        assertEquals("Abcd", Files.readString(link));
     }
 
     @Test

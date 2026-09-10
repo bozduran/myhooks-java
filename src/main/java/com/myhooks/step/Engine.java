@@ -236,20 +236,23 @@ public final class Engine {
     }
 
     private static void atomicWrite(Path path, byte[] content) throws IOException {
-        Path absolute = path.toAbsolutePath();
+        // Write through a symlink to its target so the link itself survives;
+        // moving the temp file over the link would replace it with a regular file.
+        Path target = Files.isSymbolicLink(path) ? path.toRealPath() : path;
+        Path absolute = target.toAbsolutePath();
         Path dir = absolute.getParent();
         Path tmp = Files.createTempFile(dir, absolute.getFileName().toString(), ".tmp");
         try {
             Files.write(tmp, content);
             try {
-                Files.setPosixFilePermissions(tmp, Files.getPosixFilePermissions(path));
+                Files.setPosixFilePermissions(tmp, Files.getPosixFilePermissions(absolute));
             } catch (UnsupportedOperationException ignored) {
                 // non-POSIX filesystem
             }
             try {
-                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                Files.move(tmp, absolute, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException e) {
-                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING);
+                Files.move(tmp, absolute, StandardCopyOption.REPLACE_EXISTING);
             }
         } finally {
             Files.deleteIfExists(tmp);
