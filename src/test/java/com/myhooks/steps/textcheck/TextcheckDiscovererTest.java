@@ -63,6 +63,21 @@ class TextcheckDiscovererTest {
     }
 
     @Test
+    void transformExpressionIgnoresQuotesInsideCharLiterals() {
+        List<String> findings = new ArrayList<>();
+        // The double quote inside the char literal must not start a string, so
+        // code spacing stays intact and the real string literal is transformed.
+        assertEquals("'\"'  +  \"a b\"", transformExpr("'\"'  +  \"a  b\"", false, "", findings));
+    }
+
+    @Test
+    void transformExpressionTreatsTextBlocksAsOneLiteral() {
+        List<String> findings = new ArrayList<>();
+        assertEquals("\"\"\"say \"hi\" twice\"\"\"",
+                transformExpr("\"\"\"say \"hi\"  twice\"\"\"", false, "", findings));
+    }
+
+    @Test
     void discoverFindsTextChanges() throws Exception {
         String report = """
                 <jasperReport name="t" language="java" pageWidth="595" pageHeight="842" columnWidth="555"

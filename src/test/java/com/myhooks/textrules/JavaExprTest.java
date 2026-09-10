@@ -56,4 +56,21 @@ class JavaExprTest {
         assertEquals("IF(a == 1 ? \"x\" : \"y\")", JavaExpr.format("IF(a==1?\"x\":\"y\")"));
         assertEquals("\"a==b\"", JavaExpr.format("\"a==b\""));
     }
+
+    @Test
+    void literalEndScansStringsCharsAndTextBlocks() {
+        assertEquals(5, JavaExpr.literalEnd("\"abc\"", 0));
+        assertEquals(3, JavaExpr.literalEnd("'\"'", 0));
+        assertEquals(4, JavaExpr.literalEnd("'\\''", 0));
+        assertEquals(6, JavaExpr.literalEnd("\"\"\"\"\"\"", 0));
+        assertEquals(-1, JavaExpr.literalEnd("abc", 0));
+        assertEquals(-1, JavaExpr.literalEnd("", 0));
+        assertEquals(-1, JavaExpr.literalEnd("\"abc\"", 5));
+    }
+
+    @Test
+    void literalEndExtendsAnUnterminatedLiteralToEndOfInput() {
+        assertEquals(4, JavaExpr.literalEnd("\"abc", 0));
+        assertEquals(3, JavaExpr.literalEnd("'ab", 0));
+    }
 }

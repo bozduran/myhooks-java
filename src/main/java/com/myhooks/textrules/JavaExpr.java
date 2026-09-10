@@ -185,6 +185,30 @@ public final class JavaExpr {
         return Character.isLetter(after);
     }
 
+    /**
+     * Returns the index one past the Java literal that starts at {@code start}
+     * — a {@code "} string, a {@code '} char, or the opening {@code """} of a
+     * text block — or {@code -1} when no literal starts there. A literal that is
+     * never closed extends to the end of the input, so callers that need to know
+     * whether it was terminated should check the returned end themselves.
+     *
+     * <p>Escape sequences are honoured, so a quote inside a char literal or a
+     * {@code \"} inside a string does not end it.
+     */
+    public static int literalEnd(String code, int start) {
+        if (start < 0 || start >= code.length()) {
+            return -1;
+        }
+        if (code.startsWith("\"\"\"", start)) {
+            return scanTextBlock(code, start + 3);
+        }
+        char c = code.charAt(start);
+        if (c == '"' || c == '\'') {
+            return scanQuoted(code, start, c);
+        }
+        return -1;
+    }
+
     private static int scanQuoted(String s, int start, char quote) {
         int i = start + 1;
         while (i < s.length()) {

@@ -8,6 +8,7 @@ import com.myhooks.step.EditFix;
 import com.myhooks.step.Fix;
 import com.myhooks.step.Group;
 import com.myhooks.textrules.DoubleSpace;
+import com.myhooks.textrules.JavaExpr;
 import com.myhooks.textrules.Newline;
 import com.myhooks.textrules.PeriodSpace;
 import com.myhooks.textrules.TextResult;
@@ -114,31 +115,45 @@ public final class TextcheckDiscoverer implements Discoverer {
         return content;
     }
 
-    /** Transforms double-quoted string literals inside an expression, leaving code untouched. */
+    /**
+     * Transforms the string literals inside an expression, leaving code and char
+     * literals untouched. Literals are located with the same escape-aware
+     * scanner {@link JavaExpr} uses to format expressions, so a quote inside a
+     * char literal cannot start a string and a text block is treated as one
+     * literal instead of a run of empty strings.
+     */
     static String transformExpression(String content, boolean isText, String markup, List<String> findings) {
         StringBuilder out = new StringBuilder(content.length());
         int i = 0;
         int n = content.length();
         while (i < n) {
-            if (content.charAt(i) != '"') {
+            int end = JavaExpr.literalEnd(content, i);
+            if (end < 0) {
                 out.append(content.charAt(i));
                 i++;
                 continue;
             }
-            int close = closingQuote(content, i + 1);
-            if (close < 0) {
+            char quote = content.charAt(i);
+            boolean textBlock = quote == '"' && content.startsWith("\"\"\"", i);
+            boolean terminated = textBlock
+                    ? end >= i + 6 && content.startsWith("\"\"\"", end - 3)
+                    : end > i + 1 && content.charAt(end - 1) == quote;
+            if (!terminated) {
                 out.append(content, i, n);
                 break;
             }
-            String literal = content.substring(i + 1, close);
-            out.append('"');
-            if (isText) {
-                out.append(transformText(literal, markup, findings));
-            } else {
-                out.append(transformLiteral(literal, findings));
+            if (quote == '\'') {
+                out.append(content, i, end); // char literals are never rewritten
+                i = end;
+                continue;
             }
-            out.append('"');
-            i = close + 1;
+            int innerStart = textBlock ? i + 3 : i + 1;
+            int innerEnd = textBlock ? end - 3 : end - 1;
+            String literal = content.substring(innerStart, innerEnd);
+            out.append(content, i, innerStart);
+            out.append(isText ? transformText(literal, markup, findings) : transformLiteral(literal, findings));
+            out.append(content, innerEnd, end);
+            i = end;
         }
         return out.toString();
     }
@@ -150,22 +165,6 @@ public final class TextcheckDiscoverer implements Discoverer {
             return result.text();
         }
         return content;
-    }
-
-    private static int closingQuote(String s, int from) {
-        int j = from;
-        while (j < s.length()) {
-            char c = s.charAt(j);
-            if (c == '\\') {
-                j += 2;
-                continue;
-            }
-            if (c == '"') {
-                return j;
-            }
-            j++;
-        }
-        return -1;
     }
 
     // ------------------------------------------------------------------
