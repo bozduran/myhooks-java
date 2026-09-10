@@ -2,6 +2,7 @@ package com.myhooks.xmlspan;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -174,5 +175,21 @@ class XmlScannerTest {
 
         assertTrue(xml.getBytes(StandardCharsets.UTF_8).length > xml.length(),
                 "a byte offset would not index this String");
+    }
+
+    @Test
+    void rejectsDoctypeSoEntitiesAreNeverResolved() {
+        // External entity: without DTD support this must not read the file.
+        String external = "<!DOCTYPE r [<!ENTITY x SYSTEM \"file:///etc/hostname\">]><r>&x;</r>";
+        assertThrows(XMLStreamException.class, () -> scan(external));
+
+        // Internal entity expansion (billion-laughs building block).
+        String internal = "<!DOCTYPE r [<!ENTITY a \"aaaaaaaaaa\">]><r>&a;</r>";
+        assertThrows(XMLStreamException.class, () -> scan(internal));
+    }
+
+    @Test
+    void plainDocumentsWithoutDoctypeStillScan() throws Exception {
+        assertEquals("r", scan("<r><child/></r>").tag());
     }
 }

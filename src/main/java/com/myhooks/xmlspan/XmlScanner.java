@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import javax.xml.XMLConstants;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
@@ -37,6 +38,7 @@ public final class XmlScanner {
         XMLInputFactory factory = XMLInputFactory.newFactory();
         factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, Boolean.FALSE);
         factory.setProperty(XMLInputFactory.IS_COALESCING, Boolean.TRUE);
+        disableDtd(factory);
         XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xml));
 
         Node root = null;
@@ -47,6 +49,11 @@ public final class XmlScanner {
         try {
             while (reader.hasNext()) {
                 int event = reader.next();
+                if (event == XMLStreamConstants.DTD) {
+                    // A DOCTYPE enables entity declarations (XXE, SSRF, expansion
+                    // denial of service). JRXML has no legitimate use for one.
+                    throw new XMLStreamException("DOCTYPE declarations are not supported");
+                }
                 if (event == XMLStreamConstants.START_ELEMENT) {
                     String tag = reader.getLocalName();
                     int startTag = findStartTag(xml, cursor, tag);
@@ -111,6 +118,28 @@ public final class XmlScanner {
             }
         }
         return null;
+    }
+
+    /**
+     * Disables DTD processing and external entities. A staged {@code .jrxml} is
+     * untrusted input, and the StAX defaults allow XXE (local file reads and
+     * outbound requests) and entity-expansion denial of service. Properties an
+     * implementation does not support are skipped so this stays portable.
+     */
+    private static void disableDtd(XMLInputFactory factory) {
+        setPropertyIfSupported(factory, XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
+        setPropertyIfSupported(factory, XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
+        setPropertyIfSupported(factory, XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, Boolean.FALSE);
+        setPropertyIfSupported(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        setPropertyIfSupported(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+    }
+
+    private static void setPropertyIfSupported(XMLInputFactory factory, String name, Object value) {
+        try {
+            factory.setProperty(name, value);
+        } catch (IllegalArgumentException ignored) {
+            // property not supported by this StAX implementation
+        }
     }
 
     // ------------------------------------------------------------------
