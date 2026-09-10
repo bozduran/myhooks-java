@@ -68,6 +68,10 @@ public final class ValidateStep implements Step {
             try {
                 JasperDesign design = JrSchema.validate(Files.readAllBytes(path));
                 if (toCompile.contains(file)) {
+                    // Compiling resolves (and therefore initializes) the classes the
+                    // report declares, using this JVM's class loaders. Only classes
+                    // already on the hook classpath are reachable; see the trust
+                    // boundary note in SPEC.md.
                     JrCompiler.compile(design);
                 }
                 context.out().println("  [ok] " + file);

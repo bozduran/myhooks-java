@@ -55,6 +55,19 @@ class ValidateStepTest {
         assertEquals(0, new ValidateStep().check(context(), List.of(write("bad.jrxml", UNCOMPILABLE))));
     }
 
+    @Test
+    void unresolvableClassValueFailsGracefully() throws Exception {
+        String report = """
+                <jasperReport name="t" language="java" pageWidth="595" pageHeight="842" columnWidth="555"
+                    leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+                  <field name="f" class="com.example.NoSuchClass"/>
+                  <detail><band height="20"/></detail>
+                </jasperReport>
+                """;
+
+        assertEquals(1, new ValidateStep().run(context(), List.of(write("t.jrxml", report))));
+    }
+
     private String write(String name, String content) throws Exception {
         Path file = dir.resolve(name);
         Files.writeString(file, content);

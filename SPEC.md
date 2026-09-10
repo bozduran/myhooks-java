@@ -133,6 +133,17 @@ The Java port uses the real engine instead of hand-rolled logic:
 | `JasperCompileManager` | `validate` compile gate |
 | JavaParser AST | `format` Java-expression formatting (string/char/text-block literals untouched) |
 
+**Trust boundary.** The `validate` compile gate runs in the hook's JVM and
+resolves the classes a report declares (`class="..."`, expression types) with
+the JVM's class loaders, which also runs their static initializers. Only classes
+already present on the hook's own classpath can be reached: a reference to a
+class that is not on the classpath fails compilation and blocks the commit. The
+hook classpath and the report repository are therefore trusted inputs; run the
+hook in an environment without credentials or network access you would not grant
+to the repository. Class loading cannot be restricted to an allow-list without
+rejecting legitimate reports that reference project classes, so this is accepted
+by design rather than sandboxed.
+
 ## 9. Environment
 
 - `MYHOOKS_DISABLE=format,sort` — comma-separated steps to run in **report-only**
