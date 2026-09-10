@@ -64,7 +64,7 @@ public final class FormatDiscoverer implements Discoverer {
         Optional<Attr> name = Query.findAttr(jasperReport, "name");
         if (name.isPresent()) {
             Attr attr = name.get();
-            String current = raw.substring(attr.valueStart(), attr.valueEnd());
+            String current = JrStringUtil.decode(raw.substring(attr.valueStart(), attr.valueEnd()));
             if (!current.equals(expectedName)) {
                 fixes.add(new EditFix(description, current, expectedName,
                         new Edit(attr.valueStart(), attr.valueEnd(), JrStringUtil.encode(expectedName)), color));

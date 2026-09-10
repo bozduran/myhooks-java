@@ -21,4 +21,21 @@ class JrStringUtilTest {
     void encodesAttributes() {
         assertEquals("a&amp;b&quot;c", JrStringUtil.encodeAttribute("a&b\"c"));
     }
+
+    @Test
+    void decodesNumericCharacterReferences() {
+        assertEquals("Field_1", JrStringUtil.decode("Field&#95;1"));
+        assertEquals("A&B", JrStringUtil.decode("A&#x26;B"));
+        assertEquals("A&B", JrStringUtil.decode("A&#X26;B"));
+    }
+
+    @Test
+    void decodeIsSinglePassAndLeavesUnknownReferencesAlone() {
+        assertEquals("&lt;", JrStringUtil.decode("&amp;lt;"));
+        assertEquals("&unknown;", JrStringUtil.decode("&unknown;"));
+        assertEquals("&#xZZ;", JrStringUtil.decode("&#xZZ;"));
+        assertEquals("cost & 5", JrStringUtil.decode("cost & 5"));
+        assertEquals("&", JrStringUtil.decode("&"));
+        assertEquals("", JrStringUtil.decode(""));
+    }
 }

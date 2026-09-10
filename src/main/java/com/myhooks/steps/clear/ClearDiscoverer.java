@@ -49,7 +49,8 @@ public final class ClearDiscoverer implements Discoverer {
             boolean hasDescription, String descriptionText, int descriptionStart, int descriptionEnd,
             String descriptionIndent,
             boolean hasJsonql, String jsonqlValue,
-            boolean hasLegacy, int legacyStart, int legacyEnd, int legacyNameStart, int legacyNameEnd) {
+            boolean hasLegacy, int legacyStart, int legacyEnd, int legacyNameStart, int legacyNameEnd,
+            boolean descriptionCdata) {
     }
 
     record QueryModel(String language, int langValueStart, int langValueEnd,
@@ -122,7 +123,9 @@ public final class ClearDiscoverer implements Discoverer {
                     "change description for field '" + d.name() + "' from \"" + d.descriptionText()
                             + "\" to \"" + d.jsonqlValue() + "\"",
                     d.descriptionText(), d.jsonqlValue(),
-                    new Edit(d.descriptionStart(), d.descriptionEnd(), d.jsonqlValue()), context.color()));
+                    new Edit(d.descriptionStart(), d.descriptionEnd(),
+                            d.descriptionCdata() ? d.jsonqlValue() : JrStringUtil.encode(d.jsonqlValue())),
+                    context.color()));
         }
         if (!syncFixes.isEmpty()) {
             groups.add(new Group("description sync", syncFixes));
@@ -188,6 +191,7 @@ public final class ClearDiscoverer implements Discoverer {
         int descriptionStart = -1;
         int descriptionEnd = -1;
         String descriptionIndent = "";
+        boolean descriptionCdata = false;
         boolean hasJsonql = false;
         String jsonqlValue = "";
         boolean hasLegacy = false;
@@ -200,6 +204,7 @@ public final class ClearDiscoverer implements Discoverer {
             for (Node child : node.children()) {
                 if (child.tag().equals("description")) {
                     hasDescription = true;
+                    descriptionCdata = cdataSpan(child, raw) != null;
                     Cdata cdata = descriptionTextSpan(child, raw);
                     descriptionText = cdata.content().strip();
                     descriptionStart = cdata.start();
@@ -230,7 +235,8 @@ public final class ClearDiscoverer implements Discoverer {
 
         return new Declaration(kind, name, node.startTag(), node.end(), node.endTag(),
                 hasDescription, descriptionText, descriptionStart, descriptionEnd, descriptionIndent,
-                hasJsonql, jsonqlValue, hasLegacy, legacyStart, legacyEnd, legacyNameStart, legacyNameEnd);
+                hasJsonql, jsonqlValue, hasLegacy, legacyStart, legacyEnd, legacyNameStart, legacyNameEnd,
+                descriptionCdata);
     }
 
     private static QueryModel parseQuery(Node root, String raw) {
@@ -239,7 +245,7 @@ public final class ClearDiscoverer implements Discoverer {
                 Optional<Attr> language = Query.findAttr(child, "language");
                 int langStart = language.map(Attr::valueStart).orElse(-1);
                 int langEnd = language.map(Attr::valueEnd).orElse(-1);
-                String languageValue = language.map(a -> raw.substring(a.valueStart(), a.valueEnd())).orElse("");
+                String languageValue = attrValue(child, "language", raw);
                 Cdata body = cdataSpan(child, raw);
                 int bodyStart = body == null ? -1 : body.start();
                 int bodyEnd = body == null ? -1 : body.end();
@@ -257,7 +263,8 @@ public final class ClearDiscoverer implements Discoverer {
         }
         int start = description.startTagEnd();
         int end = description.endTag();
-        return new Cdata(start, end, raw.substring(start, end).strip());
+        // Plain-text descriptions use character references; CDATA is literal.
+        return new Cdata(start, end, JrStringUtil.decode(raw.substring(start, end).strip()));
     }
 
     private static Cdata cdataSpan(Node node, String raw) {
@@ -276,7 +283,9 @@ public final class ClearDiscoverer implements Discoverer {
     }
 
     private static String attrValue(Node node, String name, String raw) {
-        return Query.findAttr(node, name).map(a -> raw.substring(a.valueStart(), a.valueEnd())).orElse("");
+        return Query.findAttr(node, name)
+                .map(a -> JrStringUtil.decode(raw.substring(a.valueStart(), a.valueEnd())))
+                .orElse("");
     }
 
     // ------------------------------------------------------------------
