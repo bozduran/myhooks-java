@@ -72,4 +72,34 @@ class EditSetTest {
         assertThrows(IllegalArgumentException.class, () -> new Edit(0, -1, "x"));
         assertThrows(IllegalArgumentException.class, () -> new Edit(3, 1, "x"));
     }
+
+    @Test
+    void editOutsideTheDocumentIsRejected() {
+        EditSet endPastEof = new EditSet();
+        endPastEof.add(new Edit(2, 99, "X"));
+        assertThrows(EditException.class, () -> endPastEof.apply("abcd"));
+
+        EditSet startPastEof = new EditSet();
+        startPastEof.add(new Edit(10, 11, "X"));
+        assertThrows(EditException.class, () -> startPastEof.apply("abcd"));
+    }
+
+    @Test
+    void identicalSpansAreRejected() {
+        EditSet set = new EditSet();
+        set.add(new Edit(2, 2, "A"));
+        set.add(new Edit(2, 2, "B"));
+        assertThrows(EditException.class, () -> set.apply("abcd"));
+    }
+
+    @Test
+    void boundaryPositionsAreAllowed() {
+        EditSet insertAtEnd = new EditSet();
+        insertAtEnd.add(new Edit(4, 4, "!"));
+        assertEquals("abcd!", insertAtEnd.apply("abcd"));
+
+        EditSet replaceThroughEnd = new EditSet();
+        replaceThroughEnd.add(new Edit(2, 4, "XY"));
+        assertEquals("abXY", replaceThroughEnd.apply("abcd"));
+    }
 }

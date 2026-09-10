@@ -3,6 +3,7 @@ package com.myhooks.step;
 import com.myhooks.diffui.Choice;
 import com.myhooks.diffui.NoTerminalException;
 import com.myhooks.diffui.Review;
+import com.myhooks.edit.EditException;
 import com.myhooks.edit.EditSet;
 import com.myhooks.git.GitException;
 import com.myhooks.io.XmlSource;
@@ -41,7 +42,7 @@ public final class Engine {
     }
 
     private enum Outcome {
-        UNCHANGED, MODIFIED, QUIT
+        UNCHANGED, MODIFIED, FAILED, QUIT
     }
 
     private int run(List<String> args, boolean checkOnly) {
@@ -93,7 +94,7 @@ public final class Engine {
                 context.err().println("myhooks: run from a terminal, or set MYHOOKS_DISABLE=clear,format,sort,textcheck to skip these steps.");
                 return 1;
             }
-            if (outcome == Outcome.MODIFIED) {
+            if (outcome == Outcome.MODIFIED || outcome == Outcome.FAILED) {
                 stopCommit = true;
             }
             if (outcome == Outcome.QUIT) {
@@ -206,6 +207,9 @@ public final class Engine {
             atomicWrite(path, source.encode(updated));
             context.out().println("  [stop] " + path + ": fixes applied and left UNSTAGED for review.");
             return Outcome.MODIFIED;
+        } catch (EditException e) {
+            context.err().println("myhooks: " + path + ": " + e.getMessage());
+            return Outcome.FAILED;
         } catch (IOException e) {
             context.err().println("myhooks: " + path + ": " + e.getMessage());
             return Outcome.UNCHANGED;

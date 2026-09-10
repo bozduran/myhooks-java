@@ -72,6 +72,22 @@ class EngineTest {
     }
 
     @Test
+    void conflictingEditsBlockInsteadOfCrashing() throws Exception {
+        Path file = write("test.jrxml", "abcd");
+        Fix first = new EditFix("replace ab", "ab", "AB", new Edit(0, 2, "AB"), false);
+        Fix second = new EditFix("replace bc", "bc", "BC", new Edit(1, 3, "BC"), false);
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(new ByteArrayOutputStream());
+        Context context = new Context(new FileDiscovery(), out, new PrintStream(err), false, q -> Choice.YES);
+        Discoverer twoFixes = (ctx, path) -> List.of(new Group("g", List.of(first, second)));
+        Engine engine = new Engine(twoFixes, context);
+
+        assertEquals(1, engine.run(List.of(file.toString())));
+        assertEquals("abcd", Files.readString(file), "the file must be left untouched");
+        assertTrue(err.toString().contains("conflicting"), "the conflict must be reported: " + err);
+    }
+
+    @Test
     void checkIsReportOnlyAndNeverWrites() throws Exception {
         Path file = write("test.jrxml", "abc");
         Fix fix = new EditFix("replace a with A", "a", "A", new Edit(0, 1, "A"), false);
