@@ -199,16 +199,22 @@ public final class SortDiscoverer implements Discoverer {
         }
         List<Child> original = container.children();
         List<Child> sorted = sortedChildren(original);
-        StringBuilder b = new StringBuilder(container.innerEnd() - container.innerStart());
-        b.append(raw, container.innerStart(), original.get(0).start());
-        for (int k = 0; k < sorted.size(); k++) {
-            b.append(raw, sorted.get(k).start(), sorted.get(k).end());
-            if (k == sorted.size() - 1) {
-                b.append(raw, original.get(original.size() - 1).end(), container.innerEnd());
-            } else {
-                b.append(raw, original.get(k).end(), original.get(k + 1).start());
-            }
+        // Trivia before the first element (e.g. a frame-level <property>) stays
+        // put. Each later element moves together with the trivia that precedes
+        // it (the whitespace, comments and properties between it and the previous
+        // element), so reordering never leaves such content behind at a slot that
+        // no longer belongs to its element.
+        int[] chunkStart = new int[original.size()];
+        for (int i = 0; i < original.size(); i++) {
+            chunkStart[i] = i == 0 ? original.get(0).start() : original.get(i - 1).end();
         }
+        int prefixEnd = original.get(0).start();
+        StringBuilder b = new StringBuilder(container.innerEnd() - container.innerStart());
+        b.append(raw, container.innerStart(), prefixEnd);
+        for (Child child : sorted) {
+            b.append(raw, chunkStart[original.indexOf(child)], child.end());
+        }
+        b.append(raw, original.get(original.size() - 1).end(), container.innerEnd());
         return raw.substring(0, container.innerStart()) + b + raw.substring(container.innerEnd());
     }
 

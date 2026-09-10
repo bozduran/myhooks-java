@@ -207,6 +207,31 @@ class SortDiscovererTest {
     }
 
     @Test
+    void reorderMovesInterElementTriviaWithItsElement() throws Exception {
+        String raw = """
+                <jasperReport name="t">
+                  <detail><band height="200">
+                    <element kind="textField" uuid="low" x="0" y="20" width="10" height="10"/>
+                    <!-- belongs to high -->
+                    <property name="belongs-to-high" value="v"/>
+                    <element kind="image" uuid="high" x="0" y="10" width="10" height="10"/>
+                  </band></detail>
+                </jasperReport>
+                """;
+        SortDiscoverer.ParsedReport report = SortDiscoverer.parse(raw);
+
+        String out = SortDiscoverer.applyReorders(raw, report.containers());
+
+        // Sorted high(y=10) before low(y=20); the comment and property that
+        // precede high move with it instead of staying at the old slot.
+        assertTrue(idx(out, "uuid=\"high\"") < idx(out, "uuid=\"low\""), out);
+        assertTrue(idx(out, "<!-- belongs to high -->") < idx(out, "uuid=\"high\""), out);
+        assertTrue(idx(out, "name=\"belongs-to-high\"") < idx(out, "uuid=\"high\""), out);
+        assertEquals(1, count(out, "belongs to high"), out);
+        assertEquals(1, count(out, "belongs-to-high"), out);
+    }
+
+    @Test
     void discoverCleanReturnsNoFixes() throws Exception {
         Path file = dir.resolve("t.jrxml");
         Files.writeString(file, CLEAN);
@@ -215,6 +240,14 @@ class SortDiscovererTest {
 
     private static int idx(String text, String needle) {
         return text.indexOf(needle);
+    }
+
+    private static int count(String text, String needle) {
+        int count = 0;
+        for (int i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + needle.length())) {
+            count++;
+        }
+        return count;
     }
 
     private static List<String> kinds(List<SortDiscoverer.Child> children) {
