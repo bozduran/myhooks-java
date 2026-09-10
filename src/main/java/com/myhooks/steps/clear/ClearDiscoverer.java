@@ -96,11 +96,10 @@ public final class ClearDiscoverer implements Discoverer {
                 if (d.kind() == DeclKind.FIELD) {
                     unusedFieldNames.add(d.name());
                 }
-                int start = lineStart(raw, d.start());
-                int end = d.end() + trailingNewline(raw, d.end());
+                int[] span = removalSpan(raw, d.start(), d.end());
                 unusedFixes.add(new EditFix("delete unused " + d.kind().name().toLowerCase() + " '" + d.name() + "'",
-                        raw.substring(start, d.end()), "",
-                        new Edit(start, end, ""), context.color()));
+                        raw.substring(span[0], d.end()), "",
+                        new Edit(span[0], span[1], ""), context.color()));
             }
         }
         if (!unusedFixes.isEmpty()) {
@@ -142,11 +141,10 @@ public final class ClearDiscoverer implements Discoverer {
             }
             if (d.hasLegacy()) {
                 if (d.hasJsonql()) {
-                    int start = lineStart(raw, d.legacyStart());
-                    int end = d.legacyEnd() + trailingNewline(raw, d.legacyEnd());
+                    int[] span = removalSpan(raw, d.legacyStart(), d.legacyEnd());
                     jsonqlFixes.add(new EditFix("remove legacy " + JSON_FIELD_PROPERTY + " from field '" + d.name() + "'",
-                            raw.substring(start, d.legacyEnd()), "",
-                            new Edit(start, end, ""), context.color()));
+                            raw.substring(span[0], d.legacyEnd()), "",
+                            new Edit(span[0], span[1], ""), context.color()));
                 } else {
                     jsonqlFixes.add(new EditFix("rename " + JSON_FIELD_PROPERTY + " to " + JSONQL_FIELD_PROPERTY,
                             JSON_FIELD_PROPERTY, JSONQL_FIELD_PROPERTY,
@@ -318,8 +316,35 @@ public final class ClearDiscoverer implements Discoverer {
         return i;
     }
 
-    private static int trailingNewline(String raw, int offset) {
-        return (offset < raw.length() && raw.charAt(offset) == '\n') ? 1 : 0;
+    /**
+     * The span to delete for a whole-element removal: the element plus its
+     * indentation and line terminator when it is the only thing on its line, or
+     * just the element when other content shares the line. This never removes a
+     * neighbouring declaration or comment, and consumes a CRLF pair whole.
+     */
+    private static int[] removalSpan(String raw, int start, int end) {
+        int from = start;
+        boolean alone = raw.substring(lineStart(raw, start), start).isBlank();
+        if (alone) {
+            from = lineStart(raw, start);
+        }
+        int to = end;
+        if (alone) {
+            int lineEnd = end;
+            while (lineEnd < raw.length() && raw.charAt(lineEnd) != '\n' && raw.charAt(lineEnd) != '\r') {
+                lineEnd++;
+            }
+            if (raw.substring(end, lineEnd).isBlank()) {
+                to = lineEnd;
+                if (to < raw.length() && raw.charAt(to) == '\r') {
+                    to++;
+                }
+                if (to < raw.length() && raw.charAt(to) == '\n') {
+                    to++;
+                }
+            }
+        }
+        return new int[] {from, to};
     }
 
     /**
