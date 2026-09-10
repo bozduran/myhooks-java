@@ -33,9 +33,14 @@ public final class JrExpressions {
         List<Reference> references = new ArrayList<>();
         for (JRExpression expression : expressions) {
             String text = JRExpressionUtil.getExpressionText(expression);
-            for (JRExpressionChunk chunk : expression.getChunks()) {
+            JRExpressionChunk[] chunks = expression.getChunks();
+            if (chunks == null) {
+                // An empty <expression/> has no chunks; the engine returns null.
+                continue;
+            }
+            for (JRExpressionChunk chunk : chunks) {
                 Kind kind = kindOf(chunk.getType());
-                if (kind != null) {
+                if (kind != null && chunk.getText() != null) {
                     references.add(new Reference(kind, chunk.getText(), text));
                 }
             }

@@ -1,6 +1,7 @@
 package com.myhooks.steps.clear;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.myhooks.diffui.Choice;
@@ -135,6 +136,21 @@ class ClearDiscovererTest {
         assertTrue(labels.contains("unused declarations"), labels.toString());
         assertTrue(labels.contains("description sync"), labels.toString());
         assertTrue(labels.contains("jsonql fixes"), labels.toString());
+    }
+
+    @Test
+    void emptyExpressionDoesNotBlockUsedNameDetection() throws Exception {
+        String report = HEADER + """
+                  <variable name="v" class="java.lang.Integer">
+                    <expression/>
+                  </variable>
+                  <field name="dead" class="java.lang.String"/>
+                """ + "</jasperReport>\n";
+
+        Group unused = group(discover(report, ""), "unused declarations");
+        String out = apply(unused.fixes(), report);
+
+        assertFalse(out.contains("name=\"dead\""), out);
     }
 
     private List<Group> discover(String report, String freeformAnswer) throws Exception {

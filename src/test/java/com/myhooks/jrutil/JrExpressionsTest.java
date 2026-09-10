@@ -38,4 +38,19 @@ class JrExpressionsTest {
         assertTrue(kindAndName.contains("VARIABLE:otherVar"));
         assertFalse(kindAndName.contains("VARIABLE:myVar"), "the variable itself must not be reported as referenced");
     }
+
+    @Test
+    void emptyExpressionIsIgnoredInsteadOfFailing() throws Exception {
+        String report = """
+                <jasperReport name="t" language="java" pageWidth="595" pageHeight="842" columnWidth="555"
+                    leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+                  <variable name="v" class="java.lang.Integer">
+                    <expression/>
+                  </variable>
+                </jasperReport>
+                """;
+        JasperDesign design = JrSchema.validate(report.getBytes(StandardCharsets.UTF_8));
+
+        assertTrue(JrExpressions.references(design).isEmpty());
+    }
 }
