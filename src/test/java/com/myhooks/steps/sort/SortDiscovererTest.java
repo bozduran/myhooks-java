@@ -232,6 +232,80 @@ class SortDiscovererTest {
     }
 
     @Test
+    void reorderPreservesSeparatorsWhenTheFirstElementMovesLast() throws Exception {
+        String raw = """
+                <jasperReport name="t">
+                  <detail><band height="100">
+                    <element kind="textField" uuid="a" x="0" y="20" width="10" height="10"/>
+                    <element kind="image" uuid="b" x="0" y="10" width="10" height="10"/>
+                  </band></detail>
+                </jasperReport>
+                """;
+        String expected = """
+                <jasperReport name="t">
+                  <detail><band height="100">
+                    <element kind="image" uuid="b" x="0" y="10" width="10" height="10"/>
+                    <element kind="textField" uuid="a" x="0" y="20" width="10" height="10"/>
+                  </band></detail>
+                </jasperReport>
+                """;
+        SortDiscoverer.ParsedReport report = SortDiscoverer.parse(raw);
+
+        assertEquals(expected, SortDiscoverer.applyReorders(raw, report.containers()));
+    }
+
+    @Test
+    void reorderKeepsNestedChildrenOnTheirOwnLines() throws Exception {
+        String raw = """
+                <jasperReport name="t">
+                  <detail><band height="200">
+                    <element kind="frame" uuid="outer" x="0" y="0" width="100" height="100">
+                      <element kind="frame" uuid="inner" x="0" y="0" width="50" height="50">
+                        <element kind="textField" uuid="i1" x="0" y="30" width="10" height="10"/>
+                        <element kind="image" uuid="i0" x="0" y="0" width="10" height="10"/>
+                      </element>
+                      <element kind="textField" uuid="o1" x="0" y="40" width="10" height="10"/>
+                      <element kind="subreport" uuid="o0" x="0" y="0" width="10" height="10"/>
+                    </element>
+                  </band></detail>
+                </jasperReport>
+                """;
+        SortDiscoverer.ParsedReport report = SortDiscoverer.parse(raw);
+
+        String out = SortDiscoverer.applyReorders(raw, report.containers());
+
+        assertFalse(out.contains("/><"), out);
+        assertFalse(out.contains("\n\n"), out);
+        assertTrue(idx(out, "uuid=\"i0\"") < idx(out, "uuid=\"i1\""), out);
+        assertTrue(idx(out, "uuid=\"o0\"") < idx(out, "uuid=\"o1\""), out);
+    }
+
+    @Test
+    void applyReordersIsIdempotent() throws Exception {
+        for (String raw : List.of(SAMPLE, NESTED)) {
+            SortDiscoverer.ParsedReport first = SortDiscoverer.parse(raw);
+            String once = SortDiscoverer.applyReorders(raw, first.containers());
+            SortDiscoverer.ParsedReport second = SortDiscoverer.parse(once);
+            assertEquals(once, SortDiscoverer.applyReorders(once, second.containers()), once);
+        }
+    }
+
+    private static final String NESTED = """
+            <jasperReport name="t">
+              <detail><band height="200">
+                <element kind="frame" uuid="outer" x="0" y="0" width="100" height="100">
+                  <element kind="frame" uuid="inner" x="0" y="0" width="50" height="50">
+                    <element kind="textField" uuid="i1" x="0" y="30" width="10" height="10"/>
+                    <element kind="image" uuid="i0" x="0" y="0" width="10" height="10"/>
+                  </element>
+                  <element kind="textField" uuid="o1" x="0" y="40" width="10" height="10"/>
+                  <element kind="subreport" uuid="o0" x="0" y="0" width="10" height="10"/>
+                </element>
+              </band></detail>
+            </jasperReport>
+            """;
+
+    @Test
     void discoverCleanReturnsNoFixes() throws Exception {
         Path file = dir.resolve("t.jrxml");
         Files.writeString(file, CLEAN);

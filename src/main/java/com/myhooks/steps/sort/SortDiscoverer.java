@@ -199,23 +199,46 @@ public final class SortDiscoverer implements Discoverer {
         }
         List<Child> original = container.children();
         List<Child> sorted = sortedChildren(original);
-        // Trivia before the first element (e.g. a frame-level <property>) stays
-        // put. Each later element moves together with the trivia that precedes
-        // it (the whitespace, comments and properties between it and the previous
-        // element), so reordering never leaves such content behind at a slot that
-        // no longer belongs to its element.
-        int[] chunkStart = new int[original.size()];
-        for (int i = 0; i < original.size(); i++) {
-            chunkStart[i] = i == 0 ? original.get(0).start() : original.get(i - 1).end();
+        int count = original.size();
+
+        // Container-level trivia before the first element (e.g. a frame-level
+        // <property>) stays put, but its trailing whitespace becomes the
+        // separator the first element carries. Every element therefore moves
+        // with the gap that precedes it (whitespace, comments and properties),
+        // so trivia stays with its element and no two elements end up glued
+        // together when the original-first element moves.
+        String prefix = raw.substring(container.innerStart(), original.get(0).start());
+        String prefixWhitespace = trailingWhitespace(prefix);
+        String containerTrivia = prefix.substring(0, prefix.length() - prefixWhitespace.length());
+        String separator = prefixWhitespace;
+        if (separator.isEmpty()) {
+            separator = trailingWhitespace(raw.substring(original.get(0).end(), original.get(1).start()));
         }
-        int prefixEnd = original.get(0).start();
+        if (separator.isEmpty()) {
+            separator = "\n";
+        }
+
         StringBuilder b = new StringBuilder(container.innerEnd() - container.innerStart());
-        b.append(raw, container.innerStart(), prefixEnd);
+        b.append(containerTrivia);
         for (Child child : sorted) {
-            b.append(raw, chunkStart[original.indexOf(child)], child.end());
+            int index = original.indexOf(child);
+            if (index == 0) {
+                b.append(separator).append(raw, original.get(0).start(), child.end());
+            } else {
+                b.append(raw, original.get(index - 1).end(), child.end());
+            }
         }
-        b.append(raw, original.get(original.size() - 1).end(), container.innerEnd());
+        b.append(raw, original.get(count - 1).end(), container.innerEnd());
         return raw.substring(0, container.innerStart()) + b + raw.substring(container.innerEnd());
+    }
+
+    /** The trailing run of whitespace in {@code text}, or {@code ""}. */
+    private static String trailingWhitespace(String text) {
+        int end = text.length();
+        while (end > 0 && Character.isWhitespace(text.charAt(end - 1))) {
+            end--;
+        }
+        return text.substring(end);
     }
 
     private static String orderSummary(List<Child> children) {
