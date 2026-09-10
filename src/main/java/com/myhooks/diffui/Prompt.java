@@ -9,9 +9,15 @@ import java.io.Reader;
 /**
  * Interactive yes/no/all/skip prompt. On a real terminal it renders
  * arrow-key-selectable options via the controlling terminal in raw mode
- * (default answer No); on a non-terminal it falls back to line-based
- * {@code y/n/a/s} input. The controlling terminal ({@code /dev/tty}) is used
- * rather than stdin because git runs hooks with stdin bound to {@code /dev/null}.
+ * (default answer No); otherwise it falls back to line-based
+ * {@code y/n/a/s} input. The controlling terminal is used rather than stdin
+ * because git runs hooks with stdin bound to {@code /dev/null} (POSIX) or
+ * {@code NUL} (Windows).
+ *
+ * <p>When no terminal can be opened at all, {@link #ask(String)} throws
+ * {@link NoTerminalException} instead of silently answering the default
+ * {@code No}, so a missing terminal can never fast-forward a commit past every
+ * fix.
  */
 public final class Prompt {
 
@@ -19,17 +25,30 @@ public final class Prompt {
     }
 
     public static Choice ask(String question) {
-        Tty tty = Tty.openRaw();
-        if (tty != null) {
+        Terminal raw = Terminals.openRaw();
+        if (raw != null) {
             try {
-                return askRaw(question, tty);
+                return askRaw(question, raw);
+            } catch (NoTerminalException e) {
+                throw e;
             } catch (Exception ignored) {
                 // fall through to line-based input
             } finally {
-                tty.close();
+                raw.close();
             }
         }
-        return askLine(question, new BufferedReader(new InputStreamReader(System.in)), System.out);
+        Terminal line = Terminals.openLine();
+        if (line != null) {
+            try {
+                return askLine(question, line.lineReader(), line.out());
+            } finally {
+                line.close();
+            }
+        }
+        if (System.console() != null) {
+            return askLine(question, new BufferedReader(new InputStreamReader(System.in)), System.out);
+        }
+        throw new NoTerminalException(question);
     }
 
     /** Line-based prompt over an injected reader (used by tests). */
@@ -72,7 +91,7 @@ public final class Prompt {
     // Raw terminal mode
     // ------------------------------------------------------------------
 
-    static Choice askRaw(String question, Tty tty) {
+    static Choice askRaw(String question, Terminal tty) {
         PrintStream out = tty.out();
         int selected = 1; // default answer is No
         while (true) {
@@ -113,7 +132,7 @@ public final class Prompt {
                     drain(tty);
                     return Choice.SKIP;
                 case "":
-                    return Choice.NO; // EOF (terminal gone)
+                    throw new NoTerminalException(question); // terminal gone
                 default:
                     break; // ignore ESC / unknown keys
             }
@@ -158,6 +177,18 @@ public final class Prompt {
                     case 'D' -> "left";
                     case 'A' -> "up";
                     case 'B' -> "down";
+                    default -> "esc";
+                };
+            }
+            if (c == 0x00 || c == 0xE0) {
+                // Windows console without ENABLE_VIRTUAL_TERMINAL_INPUT: an
+                // extended key arrives as a 0x00/0xE0 prefix plus a scan code.
+                int scan = in.readTimed();
+                return switch (scan) {
+                    case 0x48 -> "up";
+                    case 0x50 -> "down";
+                    case 0x4B -> "left";
+                    case 0x4D -> "right";
                     default -> "esc";
                 };
             }

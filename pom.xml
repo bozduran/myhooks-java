@@ -25,6 +25,7 @@
         <javaparser.version>3.26.3</javaparser.version>
         <java-diff-utils.version>4.16</java-diff-utils.version>
         <languagetool.version>6.8</languagetool.version>
+        <jna.version>5.12.1</jna.version>
     </properties>
 
     <dependencies>
@@ -86,6 +87,14 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-nop</artifactId>
             <version>2.0.16</version>
+        </dependency>
+
+        <!-- Windows console access (CONIN$/CONOUT$ raw mode + VT processing). Only
+             loaded on Windows; the POSIX path keeps using /dev/tty + stty. -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>${jna.version}</version>
         </dependency>
 
         <!-- Test framework. -->

@@ -8,7 +8,9 @@ import java.io.Reader;
 
 /**
  * Line-based free-form text prompt. Always reads a single trimmed line; blank
- * or exhausted input returns the empty string.
+ * or exhausted input returns the empty string. When no controlling terminal is
+ * available it throws {@link NoTerminalException} rather than reading the
+ * hook's {@code NUL} stdin (which would silently yield an empty answer).
  */
 public final class Freeform {
 
@@ -16,9 +18,9 @@ public final class Freeform {
     }
 
     public static String ask(String question) {
-        // git runs hooks with stdin bound to /dev/null, so read the controlling
-        // terminal when available; fall back to stdin otherwise.
-        Tty tty = Tty.openLine();
+        // git runs hooks with stdin bound to /dev/null (POSIX) or NUL (Windows),
+        // so read the controlling terminal when available.
+        Terminal tty = Terminals.openLine();
         if (tty != null) {
             try {
                 return ask(question, tty.lineReader(), tty.out());
@@ -26,7 +28,10 @@ public final class Freeform {
                 tty.close();
             }
         }
-        return ask(question, new BufferedReader(new InputStreamReader(System.in)), System.out);
+        if (System.console() != null) {
+            return ask(question, new BufferedReader(new InputStreamReader(System.in)), System.out);
+        }
+        throw new NoTerminalException(question);
     }
 
     public static String ask(String question, Reader in) {

@@ -29,13 +29,38 @@ java -jar target/myhooks-1.0.0.jar --help
 
 ### Raw git hooks
 
+Linux/macOS:
+
 ```sh
 mvn package
 scripts/install-hooks.sh /home/duran/JaspersoftWorkspace/MyReports
 ```
 
-This writes a `java -jar ...` wrapper as `/path/to/your/repo/.git/hooks/pre-commit`
-and `.git/hooks/commit-msg` (which runs `myhooks commitmsg "$1"`).
+Windows (PowerShell):
+
+```powershell
+mvn package
+powershell -ExecutionPolicy Bypass -File scripts\install-hooks.ps1 C:\src\MyReports
+```
+
+Both write a `java -jar ...` wrapper as `/path/to/your/repo/.git/hooks/pre-commit`
+and `.git/hooks/commit-msg` (which runs `myhooks commitmsg "$1"`). Re-running is
+safe; the first time an existing hook is taken over it is copied to
+`<hook>.myhooks-backup`.
+
+To remove the hooks again (Linux/macOS `scripts/deactivate-hooks.sh`, Windows
+`scripts/deactivate-hooks.ps1`):
+
+```sh
+scripts/deactivate-hooks.sh /path/to/your/repo
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\deactivate-hooks.ps1 C:\src\MyReports
+```
+
+Deactivation only removes hooks carrying the myhooks marker and restores any
+`.myhooks-backup`; hooks installed by something else are left untouched.
 
 ### pre-commit framework
 
@@ -52,6 +77,26 @@ repos:
 `require_serial: true` is set because the steps are interactive and must not run
 concurrently.
 
+### Windows
+
+The interactive prompts open the console directly (`CONIN$`/`CONOUT$` plus
+Win32 console raw mode), because git runs hooks with stdin bound to `NUL`,
+exactly as it uses `/dev/null` on POSIX. Install with
+`scripts\install-hooks.ps1` from PowerShell (or `scripts/install-hooks.sh` from
+Git Bash, which ships with Git for Windows), or wire the two hook entries
+manually:
+
+```
+pre-commit : java -jar C:\path\to\myhooks-1.0.0.jar %*
+commit-msg : java -jar C:\path\to\myhooks-1.0.0.jar commitmsg %1
+```
+
+Prompts need a console attached to the hook process. If there is none (a GUI
+git client, a detached CI run), the hook now **blocks with a clear error**
+instead of silently declining every fix; set
+`MYHOOKS_DISABLE=clear,format,sort,textcheck` to run those steps report-only, or
+commit with `--no-verify`.
+
 ## Layout
 
 ```
@@ -62,7 +107,7 @@ concurrently.
 │   ├── git/                         git plumbing (staged/tracked files)
 │   ├── xmlspan/                     byte-offset XML index (StAX)
 │   ├── edit/                        Edit + EditSet + EditMerge
-│   ├── diffui/                      diff render, prompt, freeform, color gating
+│   ├── diffui/                      diff render, terminal (POSIX/Windows), prompt, freeform, color gating
 │   ├── step/                        Step/Fix/Group interfaces + Engine
 │   ├── jrutil/                      JasperReports engine wrappers
 │   ├── textrules/                   pure text/expression transforms

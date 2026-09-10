@@ -55,6 +55,7 @@ public final class Main {
     /** Builds the production registry and context. */
     public static Main production() {
         FileDiscovery discovery = new FileDiscovery();
+        Terminals.enableAnsi();
         boolean color = DiffRenderer.colorEnabled(Terminals.available());
         Context context = new Context(discovery, System.out, System.err, color, true,
                 Prompt::ask, Freeform::ask);
@@ -151,7 +152,8 @@ public final class Main {
             return false;
         }
         String base = command.split("\\s+", 2)[0];
-        String name = base.substring(base.lastIndexOf('/') + 1);
+        int slash = Math.max(base.lastIndexOf('/'), base.lastIndexOf('\\'));
+        String name = base.substring(slash + 1);
         return name.equals("commit-msg") || name.equals("commit-msg.jar");
     }
 }

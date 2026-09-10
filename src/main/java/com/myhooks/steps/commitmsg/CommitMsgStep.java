@@ -1,6 +1,7 @@
 package com.myhooks.steps.commitmsg;
 
 import com.myhooks.diffui.Choice;
+import com.myhooks.diffui.NoTerminalException;
 import com.myhooks.step.Context;
 import com.myhooks.step.Step;
 import java.io.IOException;
@@ -141,7 +142,16 @@ public final class CommitMsgStep implements Step {
         }
 
         context.out().println("  Spelling/grammar issues never block the commit.");
-        Choice choice = context.prompt("Correct the spelling errors above?");
+        Choice choice;
+        try {
+            choice = context.prompt("Correct the spelling errors above?");
+        } catch (NoTerminalException e) {
+            // Spelling must never block, but a missing terminal must be reported
+            // loudly rather than looking like a deliberate "No".
+            context.err().println("myhooks commitmsg: " + e.getMessage());
+            context.err().println("myhooks commitmsg: spelling/grammar issues left as-is (no interactive terminal).");
+            return 0;
+        }
         switch (choice) {
             case YES:
             case ALL:

@@ -109,8 +109,15 @@ The shared prompt offers four choices per fix:
 | **Skip file** | Leave the rest of the current file untouched. |
 
 - Default answer is **No**.
-- On a terminal, arrow-key-selectable options via JLine raw mode; otherwise a
-  line-based `y/n/a/s` fallback (with a `/dev/tty` fallback under `git commit`).
+- On a terminal, arrow-key-selectable options via a platform raw-mode terminal:
+  POSIX opens `/dev/tty` and enters raw mode with `stty`; Windows opens
+  `CONIN$`/`CONOUT$` and uses `SetConsoleMode` (VT input/output). Otherwise a
+  line-based `y/n/a/s` fallback is used.
+- If no controlling terminal can be opened at all, the prompt throws
+  `NoTerminalException` and the hook **blocks** with a clear error instead of
+  silently answering the default No. (git runs hooks with stdin bound to
+  `/dev/null` on POSIX and `NUL` on Windows, so reading stdin would otherwise
+  make every prompt decline instantly.)
 - A free-form prompt is used only for the SQL→jsonql migration (the jsonql
   expression) and is always line-based.
 
@@ -138,8 +145,19 @@ The Java port uses the real engine instead of hand-rolled logic:
 ```sh
 mvn package                     # -> target/myhooks-1.0.0.jar (fat jar)
 java -jar target/myhooks-1.0.0.jar --help
-scripts/install-hooks.sh /path/to/your/repo
+
+scripts/install-hooks.sh /path/to/your/repo          # Linux/macOS hooks
+scripts/deactivate-hooks.sh /path/to/your/repo       # remove them again
 ```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install-hooks.ps1 C:\path\to\your\repo
+powershell -ExecutionPolicy Bypass -File scripts\deactivate-hooks.ps1 C:\path\to\your\repo
+```
+
+Installation backs up a pre-existing hook to `<hook>.myhooks-backup` the first
+time; deactivation restores it (or removes the hook) only when the hook carries
+the myhooks marker, so foreign hooks are never touched.
 
 See [`README.md`](README.md) for the raw-hook and pre-commit-framework install
 methods.

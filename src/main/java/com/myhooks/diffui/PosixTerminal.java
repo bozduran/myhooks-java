@@ -10,7 +10,8 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Access to the controlling terminal ({@code /dev/tty}) for interactive prompts.
+ * POSIX implementation of {@link Terminal}: the controlling terminal
+ * ({@code /dev/tty}) with raw mode entered via {@code stty}.
  *
  * <p>git runs hooks with stdin bound to {@code /dev/null}, so {@code System.in}
  * cannot be used to ask the user anything — the user's keystrokes only ever
@@ -20,18 +21,18 @@ import java.nio.charset.StandardCharsets;
  * buffering, no echo). Raw mode is entered here with {@code stty} and restored
  * on {@link #close()}. Key reads are single-threaded and blocking; the short
  * escape-sequence timeout is implemented with {@code stty min 0 time 1} rather
- * than a background reader thread, so closing one {@code Tty} can never leave a
- * stale reader competing with the next open (which previously ate the first
- * character of the free-form jsonql answer).
+ * than a background reader thread, so closing one {@code PosixTerminal} can
+ * never leave a stale reader competing with the next open (which previously ate
+ * the first character of the free-form jsonql answer).
  */
-final class Tty implements AutoCloseable, KeySource {
+final class PosixTerminal implements Terminal {
 
     private final FileInputStream rawIn;      // raw-mode input, null when line mode
     private final BufferedReader lineReader;  // line-mode input, null when raw mode
     private final PrintStream out;
     private final String savedSettings;       // original stty settings, null when not raw
 
-    private Tty(FileInputStream rawIn, BufferedReader lineReader,
+    private PosixTerminal(FileInputStream rawIn, BufferedReader lineReader,
             FileOutputStream output, String savedSettings) {
         this.rawIn = rawIn;
         this.lineReader = lineReader;
@@ -40,7 +41,7 @@ final class Tty implements AutoCloseable, KeySource {
     }
 
     /** Opens the controlling terminal in raw mode, or {@code null} if unavailable. */
-    static Tty openRaw() {
+    static PosixTerminal openRaw() {
         File tty = new File("/dev/tty");
         if (!tty.canRead() || !tty.canWrite()) {
             return null;
@@ -51,7 +52,7 @@ final class Tty implements AutoCloseable, KeySource {
             saved = stty("-g");
             stty("-icanon", "-echo", "min", "1", "time", "0");
             rawSet = true;
-            return new Tty(new FileInputStream(tty), null, new FileOutputStream(tty), saved);
+            return new PosixTerminal(new FileInputStream(tty), null, new FileOutputStream(tty), saved);
         } catch (Exception e) {
             if (rawSet) {
                 try {
@@ -65,7 +66,7 @@ final class Tty implements AutoCloseable, KeySource {
     }
 
     /** Opens the controlling terminal in cooked (line) mode, or {@code null} if unavailable. */
-    static Tty openLine() {
+    static PosixTerminal openLine() {
         File tty = new File("/dev/tty");
         if (!tty.canRead() || !tty.canWrite()) {
             return null;
@@ -73,7 +74,7 @@ final class Tty implements AutoCloseable, KeySource {
         try {
             BufferedReader reader = new BufferedReader(
                     new InputStreamReader(new FileInputStream(tty), StandardCharsets.UTF_8));
-            return new Tty(null, reader, new FileOutputStream(tty), null);
+            return new PosixTerminal(null, reader, new FileOutputStream(tty), null);
         } catch (Exception ignored) {
             return null;
         }
@@ -105,13 +106,9 @@ final class Tty implements AutoCloseable, KeySource {
         }
     }
 
-    /** Reads one logical key (arrow sequence or single char) in raw mode. */
-    String readKey() {
-        return Prompt.readKey(this);
-    }
-
     /** Restores the terminal to the settings saved when raw mode was entered. */
-    void cook() {
+    @Override
+    public void cook() {
         if (savedSettings == null) {
             return;
         }
@@ -123,7 +120,8 @@ final class Tty implements AutoCloseable, KeySource {
     }
 
     /** Re-enters raw mode after a temporary {@link #cook()}. */
-    void raw() {
+    @Override
+    public void raw() {
         try {
             stty("-icanon", "-echo", "min", "1", "time", "0");
         } catch (IOException ignored) {
@@ -131,11 +129,13 @@ final class Tty implements AutoCloseable, KeySource {
         }
     }
 
-    BufferedReader lineReader() {
+    @Override
+    public BufferedReader lineReader() {
         return lineReader;
     }
 
-    PrintStream out() {
+    @Override
+    public PrintStream out() {
         return out;
     }
 

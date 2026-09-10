@@ -76,6 +76,18 @@ class PromptTest {
     }
 
     @Test
+    void readKeyParsesWindowsScanCodes() {
+        // Windows console without ENABLE_VIRTUAL_TERMINAL_INPUT delivers an
+        // extended key as a 0x00/0xE0 prefix followed by a scan code.
+        assertEquals("up", readKey("\u00e0\u0048"));
+        assertEquals("down", readKey("\u00e0\u0050"));
+        assertEquals("left", readKey("\u00e0\u004b"));
+        assertEquals("right", readKey("\u00e0\u004d"));
+        assertEquals("up", readKey("\u0000\u0048"));
+        assertEquals("esc", readKey("\u00e0\u0041"));
+    }
+
+    @Test
     void readKeyTimesOutLoneEscape() {
         // A lone ESC: the follow-up read times out (-1) rather than returning '['.
         KeySource timed = new KeySource() {

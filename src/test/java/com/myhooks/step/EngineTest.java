@@ -1,8 +1,10 @@
 package com.myhooks.step;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.myhooks.diffui.Choice;
+import com.myhooks.diffui.NoTerminalException;
 import com.myhooks.discover.FileDiscovery;
 import com.myhooks.edit.Edit;
 import com.myhooks.git.GitStaged;
@@ -49,6 +51,24 @@ class EngineTest {
 
         assertEquals(0, engine.run(List.of(file.toString())));
         assertEquals("abc", Files.readString(file));
+    }
+
+    @Test
+    void missingTerminalBlocksInsteadOfSilentlyDeclining() throws Exception {
+        Path file = write("test.jrxml", "abc");
+        Fix fix = new EditFix("replace a with A", "a", "A", new Edit(0, 1, "A"), false);
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(new ByteArrayOutputStream());
+        Context context = new Context(new FileDiscovery(), out, new PrintStream(err), false,
+                q -> {
+                    throw new NoTerminalException(q);
+                });
+        Engine engine = new Engine(oneGroup(fix), context);
+
+        assertEquals(1, engine.run(List.of(file.toString())));
+        assertEquals("abc", Files.readString(file), "the file must be left untouched");
+        assertTrue(err.toString().contains("no interactive terminal"),
+                "the failure must be reported on stderr: " + err);
     }
 
     @Test

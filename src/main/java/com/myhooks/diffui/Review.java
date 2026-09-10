@@ -38,13 +38,15 @@ public final class Review {
     private Review() {
     }
 
-    public static Outcome run(List<Item> items, PrintStream out, boolean color) {
-        Tty tty = Tty.openRaw();
+    public static Outcome run(List<Item> items, boolean color) {
+        Terminal tty = Terminals.openRaw();
         if (tty == null) {
             return Outcome.UNAVAILABLE;
         }
         try {
-            return new Session(items, out, color, tty).run();
+            // Render to the controlling terminal rather than stdout so the ANSI
+            // cursor control is never written into a redirected/piped stream.
+            return new Session(items, tty.out(), color, tty).run();
         } finally {
             tty.close();
         }
@@ -57,19 +59,19 @@ public final class Review {
     private static final class Session {
 
         private static final String HELP =
-                "  \u2191/\u2193 move   y/Enter apply   n skip   a rest-of-group   s skip-file   q quit";
+                "  Up/Down move   y/Enter apply   n skip   a rest-of-group   s skip-file   q quit";
 
         private final List<Item> items;
         private final PrintStream out;
         private final boolean color;
-        private final Tty tty;
+        private final Terminal tty;
 
         /** Indices into {@link #items} still undecided, in order. */
         private final List<Integer> pending = new ArrayList<>();
         private int cursor;   // index into pending
         private int prevLines; // lines printed by the preview block
 
-        Session(List<Item> items, PrintStream out, boolean color, Tty tty) {
+        Session(List<Item> items, PrintStream out, boolean color, Terminal tty) {
             this.items = items;
             this.out = out;
             this.color = color;
@@ -225,9 +227,9 @@ public final class Review {
         /** Prints the preview block and returns how many lines it occupied. */
         private int printBlock() {
             Item item = current();
-            StringBuilder selection = new StringBuilder("  \u25b6 [")
+            StringBuilder selection = new StringBuilder("  > [")
                     .append(cursor + 1).append('/').append(pending.size())
-                    .append("] ").append(item.group()).append(" \u2014 ").append(item.describe());
+                    .append("] ").append(item.group()).append(" - ").append(item.describe());
             if (color) {
                 out.print("\u001b[1m" + selection + "\u001b[0m");
             } else {

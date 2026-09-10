@@ -1,6 +1,7 @@
 package com.myhooks.step;
 
 import com.myhooks.diffui.Choice;
+import com.myhooks.diffui.NoTerminalException;
 import com.myhooks.diffui.Review;
 import com.myhooks.edit.EditSet;
 import com.myhooks.git.GitException;
@@ -83,7 +84,15 @@ public final class Engine {
                 continue;
             }
 
-            Outcome outcome = applyInteractively(path, groups);
+            Outcome outcome;
+            try {
+                outcome = applyInteractively(path, groups);
+            } catch (NoTerminalException e) {
+                context.err().println("myhooks: " + e.getMessage());
+                context.err().println("myhooks: no interactive terminal; commit blocked so fixes are not silently skipped.");
+                context.err().println("myhooks: run from a terminal, or set MYHOOKS_DISABLE=clear,format,sort,textcheck to skip these steps.");
+                return 1;
+            }
             if (outcome == Outcome.MODIFIED) {
                 stopCommit = true;
             }
@@ -120,7 +129,7 @@ public final class Engine {
             }
         }
 
-        Review.Outcome outcome = Review.run(items, context.out(), context.color());
+        Review.Outcome outcome = Review.run(items, context.color());
         if (outcome == Review.Outcome.UNAVAILABLE) {
             return applySequentially(path, groups);
         }
