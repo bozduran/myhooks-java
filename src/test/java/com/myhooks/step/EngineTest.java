@@ -94,6 +94,20 @@ class EngineTest {
     }
 
     @Test
+    void unrepresentableEditBlocksInsteadOfFailingOpen() throws Exception {
+        Path file = write("latin1.jrxml", "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\nabcd");
+        Fix fix = new EditFix("insert euro", "", "€", new Edit(0, 0, "€"), false);
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(new ByteArrayOutputStream());
+        Context context = new Context(new FileDiscovery(), out, new PrintStream(err), false, q -> Choice.YES);
+        Engine engine = new Engine(oneGroup(fix), context);
+
+        assertEquals(1, engine.run(List.of(file.toString())));
+        assertEquals("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\nabcd", Files.readString(file));
+        assertTrue(err.toString().contains("cannot encode"), err.toString());
+    }
+
+    @Test
     void fileChangedDuringPromptIsNotOverwrittenWithStaleEdits() throws Exception {
         Path file = write("test.jrxml", "abcd");
         Fix fix = new EditFix("replace a with A", "a", "A", new Edit(0, 1, "A"), false);

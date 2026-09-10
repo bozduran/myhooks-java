@@ -230,8 +230,10 @@ public final class Engine {
             context.err().println("myhooks: " + path + ": " + e.getMessage());
             return Outcome.FAILED;
         } catch (IOException e) {
+            // A read/encode/write failure means the promised fix was not applied;
+            // block rather than let the commit proceed silently un-fixed.
             context.err().println("myhooks: " + path + ": " + e.getMessage());
-            return Outcome.UNCHANGED;
+            return Outcome.FAILED;
         }
     }
 
