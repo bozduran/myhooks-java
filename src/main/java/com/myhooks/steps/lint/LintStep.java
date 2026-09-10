@@ -24,6 +24,17 @@ public final class LintStep implements Step {
     /** The registered rules, in run order. Add a new rule here to enable it. */
     private static final List<Rule> RULES = List.of(new ConstantPrintWhen());
 
+    private final List<Rule> rules;
+
+    public LintStep() {
+        this(RULES);
+    }
+
+    /** Test seam: run a specific set of rules. */
+    LintStep(List<Rule> rules) {
+        this.rules = List.copyOf(rules);
+    }
+
     @Override
     public String name() {
         return "lint";
@@ -78,8 +89,14 @@ public final class LintStep implements Step {
             return;
         }
         List<Warning> warnings = new ArrayList<>();
-        for (Rule rule : RULES) {
-            warnings.addAll(rule.check(root, raw));
+        for (Rule rule : rules) {
+            try {
+                warnings.addAll(rule.check(root, raw));
+            } catch (RuntimeException e) {
+                // A broken rule must never take the hook down: lint is
+                // informational and always exits 0.
+                context.err().println("myhooks: " + file + ": lint rule failed: " + e);
+            }
         }
         warnings.sort(Comparator.comparingInt(Warning::offset));
         for (Warning warning : warnings) {

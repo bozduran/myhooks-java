@@ -29,6 +29,9 @@ public final class ConstantPrintWhen implements Rule {
 
     /** The element's text content with any CDATA wrapper stripped, then trimmed. */
     private static String content(Node node, String raw) {
+        if (node.endTag() <= node.startTagEnd()) {
+            return ""; // self-closing or empty element
+        }
         String text = raw.substring(node.startTagEnd(), node.endTag());
         if (text.startsWith("<![CDATA[") && text.endsWith("]]>")) {
             text = text.substring("<![CDATA[".length(), text.length() - "]]>".length());

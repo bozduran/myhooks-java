@@ -82,6 +82,38 @@ class LintStepTest {
         assertEquals("", out);
     }
 
+    @Test
+    void selfClosingPrintWhenExpressionDoesNotCrash() throws Exception {
+        String body = """
+                	<detail><band height="30">
+                		<element kind="staticText" x="0" y="0" width="100" height="20">
+                			<printWhenExpression/>
+                		</element>
+                	</band></detail>
+                """;
+        Path file = dir.resolve("t.jrxml");
+        Files.writeString(file, report(body));
+
+        assertEquals("", run(file));
+    }
+
+    @Test
+    void aFailingRuleIsReportedAndDoesNotCrashTheStep() throws Exception {
+        Path file = dir.resolve("t.jrxml");
+        Files.writeString(file, report(""));
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(new ByteArrayOutputStream());
+        Context context = new Context(new FileDiscovery(), out, new PrintStream(err), false, q -> Choice.NO);
+        Rule boom = (root, raw) -> {
+            throw new IllegalStateException("boom");
+        };
+
+        int exit = new LintStep(List.of(boom)).run(context, List.of(file.toString()));
+
+        assertEquals(0, exit, "lint must never block the commit");
+        assertTrue(err.toString().contains("boom"), err.toString());
+    }
+
     private String run(Path file) {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         PrintStream out = new PrintStream(buffer);
