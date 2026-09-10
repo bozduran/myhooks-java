@@ -1,11 +1,16 @@
 package com.myhooks.git;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Shells out to {@code git} for the staged and tracked file lists, memoizing
@@ -14,6 +19,11 @@ import java.util.List;
  * add} helper: every applied change is left unstaged.
  */
 public final class GitStaged {
+
+    /** How long a single git invocation may run before it is killed. */
+    static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
+    /** Upper bound on captured git output, so a runaway command cannot OOM the hook. */
+    static final int DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 
     /** A single git invocation: full command args → raw output. */
     @FunctionalInterface
@@ -97,11 +107,20 @@ public final class GitStaged {
         return Collections.unmodifiableList(result);
     }
 
-    private static final class ProcessCommand implements Command {
+    static final class ProcessCommand implements Command {
         private final Path directory; // null = current directory
+        private final Duration timeout;
+        private final int maxOutputBytes;
 
         ProcessCommand(Path directory) {
+            this(directory, DEFAULT_TIMEOUT, DEFAULT_MAX_OUTPUT_BYTES);
+        }
+
+        /** Test seam: caller-chosen timeout and output cap. */
+        ProcessCommand(Path directory, Duration timeout, int maxOutputBytes) {
             this.directory = directory;
+            this.timeout = timeout;
+            this.maxOutputBytes = maxOutputBytes;
         }
 
         @Override
@@ -112,18 +131,61 @@ public final class GitStaged {
             }
             builder.redirectErrorStream(true);
             Process process = builder.start();
-            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            int exit;
+
+            AtomicBoolean timedOut = new AtomicBoolean(false);
+            Thread watchdog = new Thread(() -> {
+                try {
+                    if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                        timedOut.set(true);
+                        process.destroyForcibly();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }, "myhooks-git-watchdog");
+            watchdog.setDaemon(true);
+            watchdog.start();
+
             try {
-                exit = process.waitFor();
+                String output;
+                try {
+                    output = readBounded(process.getInputStream(), maxOutputBytes);
+                } catch (IOException capOrReadFailure) {
+                    process.destroyForcibly();
+                    throw capOrReadFailure;
+                }
+                int exit = process.waitFor();
+                if (timedOut.get()) {
+                    throw new IOException("git " + String.join(" ", args)
+                            + " timed out after " + timeout.toSeconds() + "s");
+                }
+                if (exit != 0) {
+                    throw new IOException("exited " + exit + ": " + output.strip());
+                }
+                return output;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new IOException("interrupted", e);
+            } finally {
+                watchdog.interrupt();
+                if (process.isAlive()) {
+                    process.destroyForcibly();
+                }
             }
-            if (exit != 0) {
-                throw new IOException("exited " + exit + ": " + output.strip());
+        }
+
+        /** Reads at most {@code maxBytes}; exceeding the cap is an error, not OOM. */
+        private static String readBounded(InputStream in, int maxBytes) throws IOException {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) >= 0) {
+                if (out.size() + read > maxBytes) {
+                    throw new IOException("git output exceeded " + maxBytes + " bytes");
+                }
+                out.write(buffer, 0, read);
             }
-            return output;
+            return out.toString(StandardCharsets.UTF_8);
         }
     }
 }
