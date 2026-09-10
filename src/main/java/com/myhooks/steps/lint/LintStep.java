@@ -5,6 +5,7 @@ import com.myhooks.io.XmlSource;
 import com.myhooks.step.Context;
 import com.myhooks.step.Step;
 import com.myhooks.steps.lint.rules.ConstantPrintWhen;
+import com.myhooks.steps.lint.rules.NullDereference;
 import com.myhooks.xmlspan.Node;
 import com.myhooks.xmlspan.XmlScanner;
 import java.io.IOException;
@@ -22,7 +23,7 @@ import java.util.List;
 public final class LintStep implements Step {
 
     /** The registered rules, in run order. Add a new rule here to enable it. */
-    private static final List<Rule> RULES = List.of(new ConstantPrintWhen());
+    private static final List<Rule> RULES = List.of(new ConstantPrintWhen(), new NullDereference());
 
     private final List<Rule> rules;
 

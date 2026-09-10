@@ -133,6 +133,22 @@ class ExamplesDerivedEdgeCasesTest {
     }
 
     @Test
+    void lintWarnsOnUncheckedDereferenceInAnExampleDerivedReport() throws Exception {
+        String raw = fixture("NullCheckReport.jrxml");
+        Path file = dir.resolve("NullCheckReport.jrxml");
+        Files.writeString(file, raw);
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        Context context = context(new PrintStream(buffer));
+
+        int exit = new LintStep().run(context, List.of(file.toString()));
+
+        assertEquals(0, exit, "lint must never block");
+        String out = buffer.toString();
+        assertEquals(1, count(out, "$V{CityNumber} may be null"), out);
+        assertTrue(out.contains(":" + lineOf(raw, "$V{CityNumber}.toString()") + ": "), out);
+    }
+
+    @Test
     void combinedReportRunsEveryStepAndIsStable() throws Exception {
         Path file = dir.resolve("CombinedReport.jrxml");
         Files.writeString(file, fixture("CombinedReport.jrxml"));
@@ -192,5 +208,16 @@ class ExamplesDerivedEdgeCasesTest {
             count++;
         }
         return count;
+    }
+
+    private static int lineOf(String text, String needle) {
+        int offset = text.indexOf(needle);
+        int line = 1;
+        for (int i = 0; i < offset; i++) {
+            if (text.charAt(i) == '\n') {
+                line++;
+            }
+        }
+        return line;
     }
 }
