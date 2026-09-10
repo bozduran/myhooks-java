@@ -1,0 +1,45 @@
+<!-- Spliced from examples/TextReport.jrxml (declarations, group, expressions), examples/MarkupReport.jrxml (styled text) and examples/TableReport.jrxml (nested frame), with defects of every kind. -->
+<jasperReport name="CombinedReport" language="java" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="ffffffff-0000-0000-0000-000000000001">
+	<property name="net.sf.jasperreports.export.text.character.width" value="7.238"/>
+	<style name="Sans_Normal" default="true" fontName="DejaVu Sans" fontSize="10.0"/>
+	<parameter name="ReportTitle" class="java.lang.String"/>
+	<parameter name="UnusedParam" class="java.lang.String"/>
+	<field name="City" class="java.lang.String"/>
+	<field name="UnusedField" class="java.lang.String"/>
+	<variable name="CityNumber" resetType="Group" calculation="System" resetGroup="CityGroup" class="java.lang.Integer">
+		<initialValueExpression><![CDATA[$V{CityNumber} == null ? 1 : ($V{CityNumber} + 1)]]></initialValueExpression>
+	</variable>
+	<group name="CityGroup">
+		<groupHeader>
+			<band height="20">
+				<element kind="textField" uuid="ffffffff-0000-0000-0000-000000000002" x="0" y="0" width="200" height="20">
+					<expression><![CDATA["  " + String.valueOf($V{CityNumber}) + ". " + String.valueOf($F{City})]]></expression>
+				</element>
+			</band>
+		</groupHeader>
+	</group>
+	<title height="60">
+		<element kind="staticText" uuid="ffffffff-0000-0000-0000-000000000009" x="0" y="0" width="200" height="20">
+			<text><![CDATA[$P{ReportTitle}]]></text>
+		</element>
+		<element kind="staticText" uuid="ffffffff-0000-0000-0000-000000000003" x="0" y="20" width="200" height="20" markup="styled">
+			<text><![CDATA[<style isBold="true">Bold</style> and  double  spaces with It’s]]></text>
+		</element>
+		<element kind="textField" uuid="ffffffff-0000-0000-0000-000000000004" x="0" y="40" width="200" height="20">
+			<expression><![CDATA["no space at dot.Dot  x"]]></expression>
+		</element>
+	</title>
+	<detail>
+		<band height="80">
+			<element kind="frame" uuid="ffffffff-0000-0000-0000-000000000005" x="0" y="60" width="200" height="60">
+				<element kind="textField" uuid="ffffffff-0000-0000-0000-000000000006" x="0" y="30" width="100" height="20">
+					<expression><![CDATA['"'  +  "keep dot.Dot  x"]]></expression>
+				</element>
+				<element kind="image" uuid="ffffffff-0000-0000-0000-000000000007" x="0" y="0" width="100" height="20"/>
+			</element>
+			<element kind="textField" uuid="ffffffff-0000-0000-0000-000000000008" x="0" y="0" width="100" height="20">
+				<expression><![CDATA["a  b"]]></expression>
+			</element>
+		</band>
+	</detail>
+</jasperReport>
