@@ -8,6 +8,7 @@ import com.myhooks.diffui.Choice;
 import com.myhooks.discover.FileDiscovery;
 import com.myhooks.step.Context;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,7 +59,7 @@ class CommitMsgStepTest {
 
     @Test
     void findIssuesFlagsMisspellings() {
-        List<CommitMsgStep.Issue> issues = CommitMsgStep.findIssues("teh adress is seperate");
+        List<CommitMsgStep.Issue> issues = CommitMsgStep.findIssues("teh adress is seperate").issues();
         assertEquals(3, issues.size());
         assertTrue(issues.stream().allMatch(CommitMsgStep.Issue::spelling));
         List<String> suggestions = issues.stream()
@@ -70,7 +71,7 @@ class CommitMsgStepTest {
 
     @Test
     void findIssuesFlagsGrammar() {
-        List<CommitMsgStep.Issue> issues = CommitMsgStep.findIssues("He go to school every day");
+        List<CommitMsgStep.Issue> issues = CommitMsgStep.findIssues("He go to school every day").issues();
         CommitMsgStep.Issue grammar = issues.stream()
                 .filter(issue -> !issue.spelling())
                 .findFirst()
@@ -86,21 +87,45 @@ class CommitMsgStepTest {
                 "docs: update readme",
                 "jsonql field expression for the report",
                 "This is a correct sentence.")) {
-            assertEquals(List.of(), CommitMsgStep.findIssues(clean), clean);
+            assertEquals(List.of(), CommitMsgStep.findIssues(clean).issues(), clean);
         }
+    }
+
+    @Test
+    void findIssuesReportsAFailingCheckerInsteadOfThrowing() {
+        CommitMsgStep.SpellCheck result = CommitMsgStep.findIssues("anything", message -> {
+            throw new IOException("dictionary missing");
+        });
+
+        assertEquals(List.of(), result.issues());
+        assertEquals("dictionary missing", result.failure());
+    }
+
+    @Test
+    void unavailableSpellCheckerIsReportedAndStillReturnsZero() throws Exception {
+        Path file = write("feat: add check\n");
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(new ByteArrayOutputStream());
+        Context context = new Context(new FileDiscovery(), out, new PrintStream(err), false, q -> Choice.NO);
+        CommitMsgStep step = new CommitMsgStep(message -> {
+            throw new IOException("dictionary missing");
+        });
+
+        assertEquals(0, step.run(context, List.of(file.toString())));
+        assertTrue(err.toString().contains("spell check unavailable"), err.toString());
     }
 
     @Test
     void correctMessageAppliesSpellingSuggestions() {
         String message = "teh adress is seperate";
         assertEquals("the address is separate",
-                CommitMsgStep.correctMessage(message, CommitMsgStep.findIssues(message)));
+                CommitMsgStep.correctMessage(message, CommitMsgStep.findIssues(message).issues()));
     }
 
     @Test
     void correctMessagePreservesTitleCaseAndLeavesGrammarUntouched() {
         String message = "Teh report and an adress";
-        String corrected = CommitMsgStep.correctMessage(message, CommitMsgStep.findIssues(message));
+        String corrected = CommitMsgStep.correctMessage(message, CommitMsgStep.findIssues(message).issues());
         assertTrue(corrected.contains("The report"));
         assertTrue(corrected.contains("address"));
     }

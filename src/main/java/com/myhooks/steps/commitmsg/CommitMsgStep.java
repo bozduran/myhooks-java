@@ -46,6 +46,27 @@ public final class CommitMsgStep implements Step {
     public record Issue(int from, int to, String message, List<String> suggestions, boolean spelling) {
     }
 
+    /** The outcome of a spell/grammar check: issues, or why it was unavailable. */
+    public record SpellCheck(List<Issue> issues, String failure) {
+    }
+
+    /** Runs the grammar checker over a message; may throw if the tool is unavailable. */
+    @FunctionalInterface
+    interface SpellChecker {
+        List<RuleMatch> check(String message) throws IOException;
+    }
+
+    private final SpellChecker checker;
+
+    public CommitMsgStep() {
+        this(Engine.TOOL::check);
+    }
+
+    /** Test seam: inject a checker that can fail. */
+    CommitMsgStep(SpellChecker checker) {
+        this.checker = checker;
+    }
+
     /** Lazily initialized, shared across the single-threaded hook invocation. */
     private static final class Engine {
         private static final JLanguageTool TOOL = create();
@@ -109,9 +130,14 @@ public final class CommitMsgStep implements Step {
             context.out().println("  [semantic] allowed types: " + String.join(", ", ALLOWED_TYPES));
         }
 
-        List<Issue> issues = findIssues(message);
+        SpellCheck spellCheck = findIssues(message, checker);
+        List<Issue> issues = spellCheck.issues();
+        if (spellCheck.failure() != null) {
+            context.err().println("myhooks commitmsg: spell check unavailable (" + spellCheck.failure()
+                    + "); spelling/grammar left as-is.");
+        }
         if (issues.isEmpty()) {
-            if (semanticError == null) {
+            if (semanticError == null && spellCheck.failure() == null) {
                 context.out().println("  [ok] commit message is valid");
             }
         } else {
@@ -197,12 +223,22 @@ public final class CommitMsgStep implements Step {
     }
 
     /** Runs LanguageTool over the message and returns spelling and grammar issues. */
-    static List<Issue> findIssues(String message) {
+    static SpellCheck findIssues(String message) {
+        return findIssues(message, Engine.TOOL::check);
+    }
+
+    /**
+     * Runs {@code checker} and returns its issues, or a failure reason. A broken
+     * or unavailable checker must never block a commit, so it is reported rather
+     * than thrown.
+     */
+    static SpellCheck findIssues(String message, SpellChecker checker) {
         List<RuleMatch> matches;
         try {
-            matches = Engine.TOOL.check(message);
-        } catch (IOException e) {
-            throw new IllegalStateException("language check failed", e);
+            matches = checker.check(message);
+        } catch (IOException | RuntimeException e) {
+            String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            return new SpellCheck(List.of(), reason);
         }
         List<Issue> issues = new ArrayList<>(matches.size());
         for (RuleMatch match : matches) {
@@ -213,7 +249,7 @@ public final class CommitMsgStep implements Step {
                     List.copyOf(match.getSuggestedReplacements()),
                     match.getRule().isDictionaryBasedSpellingRule()));
         }
-        return List.copyOf(issues);
+        return new SpellCheck(List.copyOf(issues), null);
     }
 
     /** Applies the first suggestion of each spelling issue; grammar issues are left untouched. */
