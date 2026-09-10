@@ -40,9 +40,8 @@ public final class FormatDiscoverer implements Discoverer {
 
     @Override
     public List<Group> discover(Context context, Path path) throws Exception {
-        byte[] raw = Files.readAllBytes(path);
-        String text = new String(raw, StandardCharsets.UTF_8);
-        Node root = XmlScanner.scan(raw);
+        String text = Files.readString(path, StandardCharsets.UTF_8);
+        Node root = XmlScanner.scan(text);
         List<Fix> fixes = new ArrayList<>();
         collect(root, text, baseName(path), context.color(), fixes);
         return fixes.isEmpty() ? List.of() : List.of(new Group("format", fixes));

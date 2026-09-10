@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * One element in the byte-offset XML index.
+ * One element in the character-offset XML index.
  *
  * <p>{@code tag} is the element's local name ({@code element}, {@code band},
  * {@code text}, ...). {@code kind} is the unified "what is this element" value:
@@ -13,7 +13,7 @@ import java.util.List;
  * ({@code textField}, {@code staticText}, {@code frame}, ...); for any other
  * tag it falls back to the tag name.
  *
- * <p>All four offsets are absolute byte offsets into the scanned document:
+ * <p>All four offsets are absolute character offsets into the scanned text:
  * <ul>
  *   <li>{@code startTag} — the {@code <} of the start tag.</li>
  *   <li>{@code startTagEnd} — one past the {@code >} of the start tag.</li>

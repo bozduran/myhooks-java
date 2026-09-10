@@ -72,7 +72,7 @@ public final class ClearDiscoverer implements Discoverer {
     @Override
     public List<Group> discover(Context context, Path path) throws Exception {
         String raw = Files.readString(path, StandardCharsets.UTF_8);
-        Node root = XmlScanner.scan(raw.getBytes(StandardCharsets.UTF_8));
+        Node root = XmlScanner.scan(raw);
         List<Declaration> declarations = parseDeclarations(root, raw);
         List<Group> groups = new ArrayList<>();
 

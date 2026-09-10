@@ -73,7 +73,7 @@ public final class SortDiscoverer implements Discoverer {
     // ------------------------------------------------------------------
 
     static ParsedReport parse(String raw) throws XMLStreamException {
-        Node root = XmlScanner.scan(raw.getBytes(StandardCharsets.UTF_8));
+        Node root = XmlScanner.scan(raw);
         List<Container> containers = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         collectContainers(root, raw, containers, warnings);

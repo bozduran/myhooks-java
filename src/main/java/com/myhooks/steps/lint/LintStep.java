@@ -73,7 +73,7 @@ public final class LintStep implements Step {
         }
         Node root;
         try {
-            root = XmlScanner.scan(raw.getBytes(StandardCharsets.UTF_8));
+            root = XmlScanner.scan(raw);
         } catch (Exception e) {
             context.err().println("myhooks: " + file + ": " + e.getMessage());
             return;

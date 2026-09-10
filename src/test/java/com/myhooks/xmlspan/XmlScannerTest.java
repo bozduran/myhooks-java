@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class XmlScannerTest {
 
     private static Node scan(String xml) throws XMLStreamException {
-        return XmlScanner.scan(xml.getBytes(StandardCharsets.UTF_8));
+        return XmlScanner.scan(xml);
     }
 
     @Test
@@ -150,5 +150,29 @@ class XmlScannerTest {
         assertTrue(Query.isRenderedTextContext(staticText.children().get(0)));
         assertFalse(Query.isRenderedTextContext(subreport.children().get(0)));
         assertFalse(Query.isRenderedTextContext(parameter.children().get(0)));
+    }
+
+    @Test
+    void offsetsAreCharacterOffsetsWithMultiByteText() throws Exception {
+        // "café" has one multi-byte character, so byte offsets and character
+        // offsets diverge from here on. Every span must still index the String.
+        String xml = "<root note=\"café\"><element kind=\"textField\" x=\"1\"></element></root>";
+        Node root = scan(xml);
+
+        Attr note = Query.findAttr(root, "note").orElseThrow();
+        assertEquals("café", xml.substring(note.valueStart(), note.valueEnd()));
+
+        Node element = root.children().get(0);
+        assertEquals('<', xml.charAt(element.startTag()));
+        assertEquals(xml.indexOf("<element"), element.startTag());
+        assertEquals(xml.indexOf("</element>"), element.endTag());
+
+        Attr kind = Query.findAttr(element, "kind").orElseThrow();
+        assertEquals("textField", xml.substring(kind.valueStart(), kind.valueEnd()));
+        Attr x = Query.findAttr(element, "x").orElseThrow();
+        assertEquals("1", xml.substring(x.valueStart(), x.valueEnd()));
+
+        assertTrue(xml.getBytes(StandardCharsets.UTF_8).length > xml.length(),
+                "a byte offset would not index this String");
     }
 }

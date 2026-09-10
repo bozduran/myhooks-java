@@ -50,7 +50,7 @@ class RealReportIntegrationTest {
 
     @Test
     void scansRealReportWithoutError() throws Exception {
-        Node root = XmlScanner.scan(report.getBytes(StandardCharsets.UTF_8));
+        Node root = XmlScanner.scan(report);
         assertEquals("jasperReport", root.tag());
         assertEquals("Blank_A4_1", attr(root, "name"));
     }

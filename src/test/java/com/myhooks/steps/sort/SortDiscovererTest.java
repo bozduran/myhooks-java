@@ -15,7 +15,6 @@ import com.myhooks.xmlspan.Query;
 import com.myhooks.xmlspan.XmlScanner;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -172,7 +171,7 @@ class SortDiscovererTest {
     @Test
     void parseIntReturnsEmptyForMissingOrNonNumeric() throws Exception {
         String raw = "<band height=\"20\"><element kind=\"textField\" x=\"abc\" y=\"10\" width=\"10\"/></band>";
-        Node band = XmlScanner.scan(raw.getBytes(StandardCharsets.UTF_8));
+        Node band = XmlScanner.scan(raw);
         Node el = Query.directChildren(band, null).get(0);
         assertTrue(SortDiscoverer.parseInt(el, "x", raw).isEmpty());
         assertTrue(SortDiscoverer.parseInt(el, "y", raw).isPresent());

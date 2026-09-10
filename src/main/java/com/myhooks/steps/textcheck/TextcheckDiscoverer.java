@@ -44,7 +44,7 @@ public final class TextcheckDiscoverer implements Discoverer {
     @Override
     public List<Group> discover(Context context, Path path) throws Exception {
         String raw = Files.readString(path, StandardCharsets.UTF_8);
-        Node root = XmlScanner.scan(raw.getBytes(StandardCharsets.UTF_8));
+        Node root = XmlScanner.scan(raw);
         List<Fix> fixes = new ArrayList<>();
         walk(root, raw, context.color(), fixes);
         return fixes.isEmpty() ? List.of() : List.of(new Group("textcheck", fixes));
