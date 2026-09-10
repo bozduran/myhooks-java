@@ -66,6 +66,19 @@ class MainTest {
         assertEquals(Set.of(), Main.parseDisabled(null));
     }
 
+    @Test
+    void unexpectedFailureReturnsOneWithoutPropagating() {
+        assertEquals(1, Main.runGuarded(() -> {
+            throw new IllegalStateException("boom");
+        }));
+    }
+
+    @Test
+    void describeIncludesTypeAndMessage() {
+        assertEquals("IllegalStateException: boom", Main.describe(new IllegalStateException("boom")));
+        assertEquals("NullPointerException", Main.describe(new NullPointerException()));
+    }
+
     private static Context context() {
         return context(new ByteArrayOutputStream());
     }

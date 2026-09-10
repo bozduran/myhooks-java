@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -49,7 +50,32 @@ public final class Main {
     }
 
     public static void main(String[] args) {
-        System.exit(production().execute(args));
+        System.exit(runGuarded(() -> production().execute(args)));
+    }
+
+    /**
+     * Runs the CLI, converting any unexpected throwable into a clean message and
+     * a non-zero exit instead of a raw stack trace. Set {@code MYHOOKS_DEBUG} to
+     * keep the stack trace for diagnosis.
+     */
+    static int runGuarded(IntSupplier action) {
+        try {
+            return action.getAsInt();
+        } catch (Throwable failure) {
+            System.err.println("myhooks: unexpected failure: " + describe(failure));
+            if (System.getenv("MYHOOKS_DEBUG") != null) {
+                failure.printStackTrace(System.err);
+            }
+            return 1;
+        }
+    }
+
+    static String describe(Throwable failure) {
+        String message = failure.getMessage();
+        if (message == null || message.isBlank()) {
+            return failure.getClass().getSimpleName();
+        }
+        return failure.getClass().getSimpleName() + ": " + message;
     }
 
     /** Builds the production registry and context. */
