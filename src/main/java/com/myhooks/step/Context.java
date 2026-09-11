@@ -18,6 +18,7 @@ public final class Context {
     private final boolean tui;
     private final Function<String, Choice> prompt;
     private final Function<String, String> freeform;
+    private final Tally tally = new Tally();
 
     public Context(FileDiscovery discovery, PrintStream out, PrintStream err,
             boolean color, Function<String, Choice> prompt) {
@@ -59,6 +60,11 @@ public final class Context {
     /** Whether the inline review TUI may be used (production) instead of line prompts (tests). */
     public boolean tui() {
         return tui;
+    }
+
+    /** Run-wide counts, accumulated by each step and reported by the CLI. */
+    public Tally tally() {
+        return tally;
     }
 
     public Choice prompt(String question) {

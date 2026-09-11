@@ -121,6 +121,24 @@ The shared prompt offers four choices per fix:
 - A free-form prompt is used only for the SQL→jsonql migration (the jsonql
   expression) and is always line-based.
 
+### Output layout
+
+- Each file is announced with an `=` header naming the step and file
+  (`format · path/Foo.jrxml`), including files with no fixes; a fix-free file
+  then prints `[ok] path` under that header.
+- Each fix-group prints under a dashed sub-banner with its fix count
+  (`positionType (3)`), so `positionType` and `textAdjust` are visibly separate
+  questions.
+- Diffs show the absolute file line number in a gutter. The red/green background
+  covers the whole changed line — indentation, `-`/`+` marker, separating space,
+  code, and padding out to the output width.
+- Output width and rule width come from `COLUMNS`, clamped to 40–100 (default
+  52).
+- Each step prints `applied X, skipped Y, Z file(s) stopped`; a full run prints
+  a final `total:` line. `applied` counts applied fixes, `skipped` counts
+  declined fixes plus skipped files, and `stopped` counts written or failed
+  files.
+
 ## 8. JasperReports integration
 
 The Java port uses the real engine instead of hand-rolled logic:

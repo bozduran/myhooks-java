@@ -193,15 +193,26 @@ public final class Review {
 
         /** Prints the compact, non-interactive list of all fixes (no diffs). */
         private void printList() {
+            int width = Output.width();
             String lastGroup = null;
             for (Item item : items) {
                 if (!item.group().equals(lastGroup)) {
-                    out.print(Section.banner(item.group()));
+                    out.print(Section.banner(item.group() + " (" + countInGroup(item.group()) + ")", width));
                     lastGroup = item.group();
                 }
                 out.println("    - " + item.describe());
             }
             out.println();
+        }
+
+        private int countInGroup(String group) {
+            int count = 0;
+            for (Item item : items) {
+                if (item.group().equals(group)) {
+                    count++;
+                }
+            }
+            return count;
         }
 
         /** Re-renders the preview block in place (or prints it fresh on first call). */

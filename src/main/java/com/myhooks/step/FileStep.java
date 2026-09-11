@@ -16,7 +16,7 @@ public final class FileStep implements Step {
     public FileStep(String name, String usage, Discoverer discoverer, Context context) {
         this.name = name;
         this.usage = usage;
-        this.engine = new Engine(discoverer, context);
+        this.engine = new Engine(name, discoverer, context);
     }
 
     @Override

@@ -198,9 +198,53 @@ class EngineTest {
         assertEquals(0, engine.check(List.of(file.toString())));
 
         String text = out.toString();
-        assertTrue(text.contains("----------------------------------------------------"), text);
-        assertTrue(text.contains("positionType"), text);
-        assertTrue(text.contains("textAdjust"), text);
+        assertTrue(text.contains("=".repeat(40)), text);
+        assertTrue(text.contains("-".repeat(40)), text);
+        assertTrue(text.contains("positionType (1)"), text);
+        assertTrue(text.contains("textAdjust (1)"), text);
+    }
+
+    @Test
+    void runAnnouncesTheStepAndFileAndPrintsTotals() throws Exception {
+        Path file = write("test.jrxml", "abc");
+        Fix fix = new EditFix("replace a with A", "a", "A", new Edit(0, 1, "A"), false);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Context context = new Context(new FileDiscovery(), new PrintStream(out),
+                new PrintStream(new ByteArrayOutputStream()), false, q -> Choice.YES);
+        Engine engine = new Engine("format", oneGroup(fix), context);
+
+        assertEquals(1, engine.run(List.of(file.toString())));
+
+        String text = out.toString();
+        assertTrue(text.contains("format · " + file), text);
+        assertTrue(text.contains("totals: applied 1, skipped 0, 1 file stopped"), text);
+        assertEquals(1, context.tally().applied());
+        assertEquals(0, context.tally().skipped());
+        assertEquals(1, context.tally().stopped());
+    }
+
+    @Test
+    void reportListingColorsTheWholeChangedLine() throws Exception {
+        System.setProperty("myhooks.width", "40");
+        try {
+            Path file = write("test.jrxml", "abc");
+            Fix fix = new EditFix("replace a with A", "a", "A", new Edit(0, 1, "A"), true, 3);
+            Discoverer discoverer = (ctx, path) -> List.of(new Group("g", List.of(fix)));
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            Context context = new Context(new FileDiscovery(), new PrintStream(out),
+                    new PrintStream(new ByteArrayOutputStream()), true, q -> Choice.NO);
+            Engine engine = new Engine("format", discoverer, context);
+
+            assertEquals(0, engine.check(List.of(file.toString())));
+
+            String text = out.toString();
+            String redLine = "\u001b[41m\u001b[30m" + " ".repeat(10) + "3 - a" + " ".repeat(25) + "\u001b[0m";
+            String greenLine = "\u001b[42m\u001b[30m" + " ".repeat(10) + "3 + A" + " ".repeat(25) + "\u001b[0m";
+            assertTrue(text.contains(redLine), text);
+            assertTrue(text.contains(greenLine), text);
+        } finally {
+            System.clearProperty("myhooks.width");
+        }
     }
 
     private static Discoverer oneGroup(Fix fix) {

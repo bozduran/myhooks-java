@@ -15,8 +15,8 @@ class DiffRendererTest {
 
     @Test
     void rendersReplacement() {
-        String want = "  " + RED + BLACK + "- old" + RESET + "\n"
-                + "  " + GREEN + BLACK + "+ new" + RESET + "\n";
+        String want = RED + BLACK + "  - old" + RESET + "\n"
+                + GREEN + BLACK + "  + new" + RESET + "\n";
         assertEquals(want, DiffRenderer.render("old", "new", "  ", true));
     }
 
@@ -34,6 +34,36 @@ class DiffRendererTest {
                 + RED + BLACK + "- b" + RESET + "\n"
                 + GREEN + BLACK + "+ c" + RESET + "\n";
         assertEquals(want, DiffRenderer.render("a\nb", "a\nc", "", true));
+    }
+
+    @Test
+    void colorsTheWholeLineIncludingIndentation() {
+        // The indentation is part of the bar, not left outside it.
+        String want = RED + BLACK + "    - old" + RESET + "\n"
+                + GREEN + BLACK + "    + new" + RESET + "\n";
+        assertEquals(want, DiffRenderer.render("old", "new", "    ", true));
+    }
+
+    @Test
+    void rendersAbsoluteLineNumbersForBothSides() {
+        String want = "1  a\n"
+                + RED + BLACK + "2 - b" + " ".repeat(15) + RESET + "\n"
+                + GREEN + BLACK + "2 + c" + " ".repeat(15) + RESET + "\n";
+        assertEquals(want, DiffRenderer.render("a\nb", "a\nc", "", true, 1, 20));
+    }
+
+    @Test
+    void lineNumbersAdvanceOnAnInsertion() {
+        String want = GREEN + BLACK + "5 + x" + RESET + "\n"
+                + GREEN + BLACK + "6 + y" + RESET + "\n";
+        assertEquals(want, DiffRenderer.render("", "x\ny", "", true, 5, 0));
+    }
+
+    @Test
+    void noPaddingWhenWidthIsNotPositive() {
+        String want = RED + BLACK + "2 - old" + RESET + "\n"
+                + GREEN + BLACK + "2 + new" + RESET + "\n";
+        assertEquals(want, DiffRenderer.render("old", "new", "", true, 2, 0));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.myhooks.step;
 
 import com.myhooks.diffui.Choice;
 import com.myhooks.diffui.NoTerminalException;
+import com.myhooks.diffui.Output;
 import com.myhooks.diffui.Review;
 import com.myhooks.diffui.Section;
 import com.myhooks.edit.EditException;
@@ -24,13 +25,23 @@ import java.util.List;
  * result. On a real terminal the fixes are reviewed through the {@link Review}
  * inline TUI; otherwise a line-based per-fix prompt is used. {@link #check} is
  * report-only and never writes.
+ *
+ * <p>Every file is announced with a header naming the step and the file, so a
+ * run over several steps and files stays readable, and each step prints its
+ * decided/applied/stopped counts at the end.
  */
 public final class Engine {
 
+    private final String stepName;
     private final Discoverer discoverer;
     private final Context context;
 
     public Engine(Discoverer discoverer, Context context) {
+        this(null, discoverer, context);
+    }
+
+    public Engine(String stepName, Discoverer discoverer, Context context) {
+        this.stepName = stepName;
         this.discoverer = discoverer;
         this.context = context;
     }
@@ -60,9 +71,12 @@ public final class Engine {
             return 0;
         }
 
+        Tally step = new Tally();
         boolean stopCommit = false;
         for (String file : files) {
             Path path = Path.of(file);
+            context.out().print(Section.header(title(path), Output.width()));
+
             // Snapshot before discovery: the edits are computed from this state,
             // and the interactive review can pause for a long time.
             byte[] snapshot = null;
@@ -72,6 +86,7 @@ public final class Engine {
                 } catch (IOException e) {
                     context.err().println("myhooks: " + path + ": " + e.getMessage());
                     stopCommit = true;
+                    step.stopped(1);
                     continue;
                 }
             }
@@ -82,6 +97,7 @@ public final class Engine {
                 context.err().println("myhooks: " + path + ": " + e.getMessage());
                 if (!checkOnly) {
                     stopCommit = true;
+                    step.stopped(1);
                 }
                 continue;
             }
@@ -91,8 +107,6 @@ public final class Engine {
                 continue;
             }
 
-            context.out().println("checking " + path);
-
             if (checkOnly) {
                 list(groups);
                 context.out().println("  [report] " + path + ": fixes found (not applied)");
@@ -101,7 +115,7 @@ public final class Engine {
 
             Outcome outcome;
             try {
-                outcome = applyInteractively(path, groups, snapshot);
+                outcome = applyInteractively(path, groups, snapshot, step);
             } catch (NoTerminalException e) {
                 context.err().println("myhooks: " + e.getMessage());
                 context.err().println("myhooks: no interactive terminal; commit blocked so fixes are not silently skipped.");
@@ -110,17 +124,24 @@ public final class Engine {
             }
             if (outcome == Outcome.MODIFIED || outcome == Outcome.FAILED) {
                 stopCommit = true;
+                step.stopped(1);
             }
             if (outcome == Outcome.QUIT) {
                 break;
             }
         }
+
+        context.tally().add(step);
+        if (!checkOnly && !step.isEmpty()) {
+            context.out().println("  totals: " + step.summary());
+        }
         return stopCommit ? 1 : 0;
     }
 
     private void list(List<Group> groups) {
+        int width = Output.width();
         for (Group group : groups) {
-            context.out().print(Section.banner(group.label()));
+            context.out().print(Section.banner(label(group), width));
             for (Fix fix : group.fixes()) {
                 context.out().println("    - " + fix.describe());
                 context.out().print(fix.diff());
@@ -128,41 +149,64 @@ public final class Engine {
         }
     }
 
-    private Outcome applyInteractively(Path path, List<Group> groups, byte[] snapshot) {
-        if (context.tui()) {
-            return applyViaReview(path, groups, snapshot);
-        }
-        return applySequentially(path, groups, snapshot);
+    /** The step/file title used for a file's header banner. */
+    private String title(Path path) {
+        return stepName == null || stepName.isBlank() ? path.toString() : stepName + " · " + path;
     }
 
-    private Outcome applyViaReview(Path path, List<Group> groups, byte[] snapshot) {
+    private static String label(Group group) {
+        return group.label() + " (" + group.fixes().size() + ")";
+    }
+
+    private Outcome applyInteractively(Path path, List<Group> groups, byte[] snapshot, Tally tally) {
+        if (context.tui()) {
+            return applyViaReview(path, groups, snapshot, tally);
+        }
+        return applySequentially(path, groups, snapshot, tally);
+    }
+
+    private Outcome applyViaReview(Path path, List<Group> groups, byte[] snapshot, Tally tally) {
         EditSet edits = new EditSet();
         List<Review.Item> items = new ArrayList<>();
+        int[] applied = {0};
         for (Group group : groups) {
             for (Fix fix : group.fixes()) {
-                items.add(new Review.Item(group.label(), fix.describe(), fix.diff(), () -> fix.apply(edits)));
+                items.add(new Review.Item(group.label(), fix.describe(), fix.diff(), () -> {
+                    fix.apply(edits);
+                    applied[0]++;
+                }));
             }
         }
 
         Review.Outcome outcome = Review.run(items, context.color());
         if (outcome == Review.Outcome.UNAVAILABLE) {
-            return applySequentially(path, groups, snapshot);
+            return applySequentially(path, groups, snapshot, tally);
         }
         if (outcome == Review.Outcome.SKIPPED) {
             context.out().println("  [skip] " + path + " left unchanged");
+            tally.skipped(1);
             return Outcome.UNCHANGED;
         }
         if (outcome == Review.Outcome.QUIT) {
+            tally.skipped(1);
             return Outcome.QUIT;
         }
-        return writeIfChanged(path, edits, snapshot);
+        // Whatever the reviewer did not apply was declined; applied fixes only
+        // count once the file is actually written.
+        tally.skipped(items.size() - applied[0]);
+        Outcome written = writeIfChanged(path, edits, snapshot);
+        if (written == Outcome.MODIFIED) {
+            tally.applied(applied[0]);
+        }
+        return written;
     }
 
     /** Line-based per-fix prompting, used when no controlling terminal is available. */
-    private Outcome applySequentially(Path path, List<Group> groups, byte[] snapshot) {
+    private Outcome applySequentially(Path path, List<Group> groups, byte[] snapshot, Tally tally) {
         list(groups);
 
         EditSet edits = new EditSet();
+        int approved = 0;
         boolean anyApplied = false;
         boolean skipFile = false;
 
@@ -175,6 +219,7 @@ public final class Engine {
                 }
                 if (restOfGroup) {
                     fix.apply(edits);
+                    approved++;
                     anyApplied = true;
                     continue;
                 }
@@ -182,10 +227,12 @@ public final class Engine {
                 switch (choice) {
                     case YES:
                         fix.apply(edits);
+                        approved++;
                         anyApplied = true;
                         break;
                     case ALL:
                         fix.apply(edits);
+                        approved++;
                         anyApplied = true;
                         restOfGroup = true;
                         break;
@@ -194,6 +241,7 @@ public final class Engine {
                         break;
                     case NO:
                     default:
+                        tally.skipped(1);
                         break;
                 }
             }
@@ -201,13 +249,19 @@ public final class Engine {
 
         if (skipFile) {
             context.out().println("  [skip] " + path + " left unchanged");
+            tally.skipped(1);
             return Outcome.UNCHANGED;
         }
         if (!anyApplied) {
             context.out().println("  [ok] " + path);
             return Outcome.UNCHANGED;
         }
-        return writeIfChanged(path, edits, snapshot);
+        // Fixes count as applied only once the file is actually written.
+        Outcome written = writeIfChanged(path, edits, snapshot);
+        if (written == Outcome.MODIFIED) {
+            tally.applied(approved);
+        }
+        return written;
     }
 
     private Outcome writeIfChanged(Path path, EditSet edits, byte[] snapshot) {

@@ -1,6 +1,7 @@
 package com.myhooks.steps.sort;
 
 import com.myhooks.edit.Edit;
+import com.myhooks.io.Lines;
 import com.myhooks.io.XmlSource;
 import com.myhooks.step.Context;
 import com.myhooks.step.Discoverer;
@@ -63,7 +64,7 @@ public final class SortDiscoverer implements Discoverer {
 
         String reordered = applyReorders(raw, report.containers());
         Fix fix = new EditFix(String.join("\n", details), raw, reordered,
-                new Edit(0, raw.length(), reordered), context.color());
+                new Edit(0, raw.length(), reordered), context.color(), 1);
         return List.of(new Group("sort", List.of(fix)));
     }
 
@@ -108,7 +109,7 @@ public final class SortDiscoverer implements Discoverer {
         OptionalInt value = parseInt(element, name, raw);
         if (value.isEmpty()) {
             warnings.add(String.format("warning: missing or non-numeric %s on %s (line %d)",
-                    name, element.kind(), lineOf(raw, element.startTag())));
+                    name, element.kind(), Lines.lineOf(raw, element.startTag())));
             return 0;
         }
         return value.getAsInt();
@@ -126,16 +127,6 @@ public final class SortDiscoverer implements Discoverer {
         } catch (NumberFormatException e) {
             return OptionalInt.empty();
         }
-    }
-
-    private static int lineOf(String raw, int offset) {
-        int line = 1;
-        for (int i = 0; i < offset; i++) {
-            if (raw.charAt(i) == '\n') {
-                line++;
-            }
-        }
-        return line;
     }
 
     // ------------------------------------------------------------------
