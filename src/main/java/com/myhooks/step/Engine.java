@@ -3,6 +3,7 @@ package com.myhooks.step;
 import com.myhooks.diffui.Choice;
 import com.myhooks.diffui.NoTerminalException;
 import com.myhooks.diffui.Review;
+import com.myhooks.diffui.Section;
 import com.myhooks.edit.EditException;
 import com.myhooks.edit.EditSet;
 import com.myhooks.git.GitException;
@@ -119,7 +120,7 @@ public final class Engine {
 
     private void list(List<Group> groups) {
         for (Group group : groups) {
-            context.out().println("  " + group.label());
+            context.out().print(Section.banner(group.label()));
             for (Fix fix : group.fixes()) {
                 context.out().println("    - " + fix.describe());
                 context.out().print(fix.diff());

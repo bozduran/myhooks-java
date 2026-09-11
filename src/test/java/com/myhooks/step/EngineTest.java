@@ -183,6 +183,26 @@ class EngineTest {
         assertEquals("ABcd", Files.readString(file));
     }
 
+    @Test
+    void reportListingSeparatesGroupsWithBanners() throws Exception {
+        Path file = write("test.jrxml", "abc");
+        Fix fix = new EditFix("replace a with A", "a", "A", new Edit(0, 1, "A"), false);
+        Discoverer discoverer = (ctx, path) -> List.of(
+                new Group("positionType", List.of(fix)),
+                new Group("textAdjust", List.of(fix)));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Context context = new Context(new FileDiscovery(), new PrintStream(out),
+                new PrintStream(new ByteArrayOutputStream()), false, q -> Choice.NO);
+        Engine engine = new Engine(discoverer, context);
+
+        assertEquals(0, engine.check(List.of(file.toString())));
+
+        String text = out.toString();
+        assertTrue(text.contains("----------------------------------------------------"), text);
+        assertTrue(text.contains("positionType"), text);
+        assertTrue(text.contains("textAdjust"), text);
+    }
+
     private static Discoverer oneGroup(Fix fix) {
         return (ctx, path) -> List.of(new Group("g1", List.of(fix)));
     }

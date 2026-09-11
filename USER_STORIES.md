@@ -199,9 +199,12 @@ relies on raw-tag string surgery.
 **Scope**: `src/main/java/com/myhooks/steps/format/*.java` (+ tests).
 
 **Acceptance criteria**
-- [ ] Discovers fixes as `List<Group>` (one group).
-- [ ] `positionType`/`textAdjust` attributes and `<jasperReport name>`
-      alignment via `xmlspan.findAttr` (quote-agnostic).
+- [ ] Discovers fixes as `List<Group>` (one group per fix kind: report name,
+      positionType, textAdjust, expression formatting).
+- [ ] `positionType="Float"` is added/required only on `textField` and
+      `subreport` elements; `textAdjust="StretchHeight"` only on `textField`.
+- [ ] `positionType`/`textAdjust` are asked as separate questions.
+- [ ] `<jasperReport name>` alignment via `xmlspan.findAttr` (quote-agnostic).
 - [ ] Java-expression formatting via `textrules.JavaExpr` (AST).
 - [ ] No period/newline rules (owned by `textcheck`).
 - [ ] Tests: attributes, name, expression, single-quote case; green.

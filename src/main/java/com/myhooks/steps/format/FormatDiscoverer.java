@@ -23,11 +23,18 @@ import java.util.Set;
  * The format step's fix discovery: required element attributes, report-name
  * alignment, and Java-expression formatting. Text rules (period/newline) are
  * owned by textcheck, not here.
+ *
+ * <p>Each fix kind is its own {@link Group}, so the interactive review asks
+ * about them separately: {@code positionType} and {@code textAdjust} are never
+ * bundled into one question. {@code positionType="Float"} is required only on
+ * {@code textField} and {@code subreport} elements, and
+ * {@code textAdjust="StretchHeight"} only on {@code textField} elements.
  */
 public final class FormatDiscoverer implements Discoverer {
 
     private static final String POSITION_TYPE = "positionType";
     private static final String TEXT_ADJUST = "textAdjust";
+    private static final Set<String> POSITION_TYPE_KINDS = Set.of("textField", "subreport");
     private static final String CDATA_OPEN = "<![CDATA[";
     private static final String CDATA_CLOSE = "]]>";
 
@@ -41,21 +48,21 @@ public final class FormatDiscoverer implements Discoverer {
     public List<Group> discover(Context context, Path path) throws Exception {
         String text = XmlSource.read(path).text();
         Node root = XmlScanner.scan(text);
-        List<Fix> fixes = new ArrayList<>();
-        collect(root, text, baseName(path), context.color(), fixes);
-        return fixes.isEmpty() ? List.of() : List.of(new Group("format", fixes));
+        Buckets buckets = new Buckets();
+        collect(root, text, baseName(path), context.color(), buckets);
+        return buckets.groups();
     }
 
-    private void collect(Node node, String raw, String expectedName, boolean color, List<Fix> fixes) {
+    private void collect(Node node, String raw, String expectedName, boolean color, Buckets buckets) {
         if (node.tag().equals("jasperReport")) {
-            nameFix(node, raw, expectedName, color, fixes);
+            nameFix(node, raw, expectedName, color, buckets.names);
         } else if (node.tag().equals("element")) {
-            elementFix(node, raw, color, fixes);
+            elementFix(node, raw, color, buckets);
         } else if (EXPRESSION_ELEMENTS.contains(node.tag())) {
-            expressionFix(node, raw, color, fixes);
+            expressionFix(node, raw, color, buckets.expressions);
         }
         for (Node child : node.children()) {
-            collect(child, raw, expectedName, color, fixes);
+            collect(child, raw, expectedName, color, buckets);
         }
     }
 
@@ -76,10 +83,20 @@ public final class FormatDiscoverer implements Discoverer {
         }
     }
 
-    private void elementFix(Node element, String raw, boolean color, List<Fix> fixes) {
+    private void elementFix(Node element, String raw, boolean color, Buckets buckets) {
+        String kind = element.kind();
+        if (POSITION_TYPE_KINDS.contains(kind)) {
+            positionTypeFix(element, raw, color, buckets.positionTypes);
+        }
+        if (kind.equals("textField")) {
+            textAdjustFix(element, raw, color, buckets.textAdjusts);
+        }
+    }
+
+    private void positionTypeFix(Node element, String raw, boolean color, List<Fix> fixes) {
         Optional<Attr> positionType = Query.findAttr(element, POSITION_TYPE);
         if (positionType.isEmpty()) {
-            int pos = afterAttr(element, "uuid", "kind");
+            int pos = afterAttr(element, raw, "uuid", "kind");
             fixes.add(new EditFix("add positionType=\"Float\"", "", "positionType=\"Float\"",
                     new Edit(pos, pos, " positionType=\"Float\""), color));
         } else if (positionType.get().valueStart() == positionType.get().valueEnd()) {
@@ -87,18 +104,18 @@ public final class FormatDiscoverer implements Discoverer {
             fixes.add(new EditFix("set positionType=\"Float\"", "", "Float",
                     new Edit(attr.valueStart(), attr.valueEnd(), "Float"), color));
         }
+    }
 
-        if (element.kind().equals("textField")) {
-            Optional<Attr> textAdjust = Query.findAttr(element, TEXT_ADJUST);
-            if (textAdjust.isEmpty()) {
-                int pos = beforeClose(element, raw);
-                fixes.add(new EditFix("add textAdjust=\"StretchHeight\"", "", "textAdjust=\"StretchHeight\"",
-                        new Edit(pos, pos, " textAdjust=\"StretchHeight\""), color));
-            } else if (textAdjust.get().valueStart() == textAdjust.get().valueEnd()) {
-                Attr attr = textAdjust.get();
-                fixes.add(new EditFix("set textAdjust=\"StretchHeight\"", "", "StretchHeight",
-                        new Edit(attr.valueStart(), attr.valueEnd(), "StretchHeight"), color));
-            }
+    private void textAdjustFix(Node element, String raw, boolean color, List<Fix> fixes) {
+        Optional<Attr> textAdjust = Query.findAttr(element, TEXT_ADJUST);
+        if (textAdjust.isEmpty()) {
+            int pos = beforeClose(element, raw);
+            fixes.add(new EditFix("add textAdjust=\"StretchHeight\"", "", "textAdjust=\"StretchHeight\"",
+                    new Edit(pos, pos, " textAdjust=\"StretchHeight\""), color));
+        } else if (textAdjust.get().valueStart() == textAdjust.get().valueEnd()) {
+            Attr attr = textAdjust.get();
+            fixes.add(new EditFix("set textAdjust=\"StretchHeight\"", "", "StretchHeight",
+                    new Edit(attr.valueStart(), attr.valueEnd(), "StretchHeight"), color));
         }
     }
 
@@ -122,11 +139,21 @@ public final class FormatDiscoverer implements Discoverer {
         }
     }
 
-    private int afterAttr(Node element, String... names) {
+    /**
+     * The insertion point just after the first present anchor attribute, or just
+     * after the tag name when none can be used. When an anchor is the element's
+     * last attribute its successor is the tag close, which the textAdjust
+     * insertion also targets; the tag-name position is chosen instead so the two
+     * fixes never add edits on the same span (which {@code EditSet} rejects).
+     */
+    private int afterAttr(Node element, String raw, String... names) {
         for (String name : names) {
             Optional<Attr> attr = Query.findAttr(element, name);
             if (attr.isPresent()) {
-                return attr.get().valueEnd() + 1;
+                int pos = attr.get().valueEnd() + 1;
+                if (pos < element.startTagEnd() && raw.charAt(pos) != '>' && raw.charAt(pos) != '/') {
+                    return pos;
+                }
             }
         }
         return element.startTag() + 1 + element.tag().length();
@@ -144,5 +171,32 @@ public final class FormatDiscoverer implements Discoverer {
         String name = path.getFileName().toString();
         int dot = name.lastIndexOf('.');
         return dot > 0 ? name.substring(0, dot) : name;
+    }
+
+    /**
+     * Collects the discovered fixes per kind so that each non-empty kind becomes
+     * its own group (and therefore its own review question).
+     */
+    private static final class Buckets {
+
+        private final List<Fix> names = new ArrayList<>();
+        private final List<Fix> positionTypes = new ArrayList<>();
+        private final List<Fix> textAdjusts = new ArrayList<>();
+        private final List<Fix> expressions = new ArrayList<>();
+
+        private List<Group> groups() {
+            List<Group> groups = new ArrayList<>();
+            add(groups, "report name", names);
+            add(groups, "positionType", positionTypes);
+            add(groups, "textAdjust", textAdjusts);
+            add(groups, "expression formatting", expressions);
+            return groups;
+        }
+
+        private static void add(List<Group> groups, String label, List<Fix> fixes) {
+            if (!fixes.isEmpty()) {
+                groups.add(new Group(label, fixes));
+            }
+        }
     }
 }

@@ -87,8 +87,10 @@ class EditMerge { static Edit mergeSameSpan(List<Edit>); }
 ```
 
 The "All" choice applies to the rest of the **current group**; "Skip file"
-applies to the file. The five file steps return a single group per fix-kind
-(`clear` returns several), which preserves the per-fix-group semantics.
+applies to the file. The file steps return one group per fix-kind (`clear` and
+`format` return several), which preserves the per-fix-group semantics. Each
+group is printed under a dashed banner (the group name between two rules) so
+consecutive questions stay visually separate.
 
 ## 5. JasperReports integration (the reason for Java)
 

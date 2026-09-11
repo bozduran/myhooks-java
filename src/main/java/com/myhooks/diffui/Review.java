@@ -196,7 +196,7 @@ public final class Review {
             String lastGroup = null;
             for (Item item : items) {
                 if (!item.group().equals(lastGroup)) {
-                    out.println("  " + item.group());
+                    out.print(Section.banner(item.group()));
                     lastGroup = item.group();
                 }
                 out.println("    - " + item.describe());

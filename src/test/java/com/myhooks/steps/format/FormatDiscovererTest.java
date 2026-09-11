@@ -1,6 +1,7 @@
 package com.myhooks.steps.format;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.myhooks.diffui.Choice;
@@ -23,7 +24,7 @@ class FormatDiscovererTest {
     Path dir;
 
     @Test
-    void addsPositionTypeAndTextAdjust() throws Exception {
+    void addsPositionTypeToTextFieldAndSubreportOnly() throws Exception {
         String in = """
                 <jasperReport name="sample" language="java">
                   <detail>
@@ -31,6 +32,7 @@ class FormatDiscovererTest {
                       <element kind="textField" uuid="u1" x="0" y="0" width="100" height="20">
                         <expression><![CDATA["clean"]]></expression>
                       </element>
+                      <element kind="subreport" uuid="r1" x="0" y="0" width="100" height="20"/>
                       <element kind="staticText" uuid="s1" x="0" y="0" width="100" height="20">
                         <text><![CDATA[clean]]></text>
                       </element>
@@ -41,11 +43,64 @@ class FormatDiscovererTest {
                 """;
         String out = apply("sample.jrxml", in);
 
-        assertTrue(out.contains("uuid=\"u1\" positionType=\"Float\""), out);
         assertTrue(out.contains("textField\" uuid=\"u1\" positionType=\"Float\""), out);
+        assertTrue(out.contains("subreport\" uuid=\"r1\" positionType=\"Float\""), out);
+        assertFalse(out.contains("uuid=\"s1\" positionType"), out);
+        assertFalse(out.contains("uuid=\"b1\" positionType"), out);
+    }
+
+    @Test
+    void addsTextAdjustToTextFieldOnly() throws Exception {
+        String in = """
+                <jasperReport name="sample" language="java">
+                  <detail>
+                    <band height="100">
+                      <element kind="textField" uuid="u1" x="0" y="0" width="100" height="20">
+                        <expression><![CDATA["clean"]]></expression>
+                      </element>
+                      <element kind="staticText" uuid="s1" x="0" y="0" width="100" height="20">
+                        <text><![CDATA[clean]]></text>
+                      </element>
+                      <element kind="subreport" uuid="r1" x="0" y="0" width="100" height="20"/>
+                    </band>
+                  </detail>
+                </jasperReport>
+                """;
+        String out = apply("sample.jrxml", in);
+
         assertTrue(out.contains("height=\"20\" textAdjust=\"StretchHeight\">"), out);
-        assertTrue(out.contains("uuid=\"s1\" positionType=\"Float\""), out);
-        assertTrue(out.contains("uuid=\"b1\" positionType=\"Float\""), out);
+        assertFalse(out.contains("uuid=\"s1\" textAdjust"), out);
+        assertFalse(out.contains("uuid=\"r1\" textAdjust"), out);
+    }
+
+    @Test
+    void reportsPositionTypeAndTextAdjustAsSeparateGroups() throws Exception {
+        String in = """
+                <jasperReport name="sample" language="java">
+                  <element kind="textField" uuid="u1" x="0" y="0" width="100" height="20">
+                    <expression><![CDATA["clean"]]></expression>
+                  </element>
+                </jasperReport>
+                """;
+        Path file = dir.resolve("sample.jrxml");
+        Files.writeString(file, in);
+        List<Group> groups = new FormatDiscoverer().discover(context(), file);
+
+        List<String> labels = groups.stream().map(Group::label).toList();
+        assertEquals(List.of("positionType", "textAdjust"), labels);
+    }
+
+    @Test
+    void selfClosingTextFieldGetsBothAttributesWithoutConflictingEdits() throws Exception {
+        String in = """
+                <jasperReport name="sample" language="java">
+                  <element kind="textField" uuid="u1"/>
+                </jasperReport>
+                """;
+        String out = apply("sample.jrxml", in);
+
+        assertTrue(out.contains("textField\" positionType=\"Float\" uuid=\"u1\""
+                + " textAdjust=\"StretchHeight\"/>"), out);
     }
 
     @Test
