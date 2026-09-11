@@ -41,11 +41,11 @@ commitmsg (commit-msg hook) → clear → format → sort → textcheck → vali
 | --- | --- |
 | `commitmsg` | Conventional Commit subject (blocks) + LanguageTool spell/grammar report (non-blocking) |
 | `clear` | SQL→jsonql query migration, unused declarations, jsonql property fixes, description↔jsonql sync |
-| `format` | `positionType`/`textAdjust` attributes, `<jasperReport name>` alignment, Java-expression formatting (AST) |
+| `format` | `positionType="Float"` on textField/subreport, `textAdjust="StretchHeight"` on textField, `<jasperReport name>` alignment, Java-expression formatting (AST) |
 | `sort` | reorder band/frame `<element>` children by geometry (y then x, stable) |
 | `textcheck` | period space, double-space, unrenderable characters, newline normalization |
 | `validate` | JRXML XSD validation + `JasperCompileManager` compile gate on modified files |
-| `lint` | static-analysis warnings (informational, never modifies, always returns 0) |
+| `lint` | static-analysis warnings (constant `printWhenExpression`, unchecked null dereference, missing `removeLineWhenBlank="true"` on textField/subreport); informational, never modifies, always returns 0 |
 | `report` | include-chain (informational, never modifies, always returns 0) |
 
 The `commitmsg` step is not part of the pre-commit sequence: it runs only via
