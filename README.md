@@ -75,15 +75,9 @@ This repository ships a ready-to-use `.pre-commit-config.yaml`:
 pre-commit install --hook-type pre-commit --hook-type commit-msg
 ```
 
-To consume the hook from another repository, reference this one and its
-`.pre-commit-hooks.yaml` manifest:
-
-```yaml
-repos:
-  - repo: /path/to/myhooks-java
-    hooks:
-      - id: myhooks
-```
+See [`PRE_COMMIT.md`](PRE_COMMIT.md) for copying this configuration into another
+repository. Note that the local hook's `entry` must point at the **built jar**
+(absolute path), because `target/` is relative to this checkout.
 
 `require_serial: true` is set because the steps are interactive and must not run
 concurrently. `myhooks` no longer provides a `commit-msg` hook: remove
@@ -139,6 +133,7 @@ commit with `--no-verify`.
 
 ## Docs
 
+- [`PRE_COMMIT.md`](PRE_COMMIT.md) — add the pre-commit + gitlint setup to your repo.
 - [`SPEC.md`](SPEC.md) — the Java software specification.
 - [`PLAN.md`](PLAN.md) — refactor plan and locked decisions.
 - [`USER_STORIES.md`](USER_STORIES.md) — step-by-step stories (one commit each).

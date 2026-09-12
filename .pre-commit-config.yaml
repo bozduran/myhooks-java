@@ -21,6 +21,7 @@ repos:
         files: \.jrxml$
         pass_filenames: true
         require_serial: true
+        stages: [pre-commit]
 
   - repo: https://github.com/jorisroovers/gitlint
     rev: v0.19.1
