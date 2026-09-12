@@ -1,19 +1,20 @@
 # Using myhooks with the pre-commit framework
 
-This guide shows how to add the **myhooks** JasperReports hook and the
-**gitlint** commit-message hook to your own repository using
-[pre-commit](https://pre-commit.com/).
+This guide shows how to add the **myhooks** JasperReports hook, the **gitlint**
+commit-message hook and the **codespell** spell-checker to your own repository
+using [pre-commit](https://pre-commit.com/).
 
 When you are done, every commit runs:
 
 | Stage | Hook | What it checks |
 | --- | --- | --- |
 | `pre-commit` | `myhooks` | `clear` + `format` + `sort` + `textcheck` + `validate` + `lint` + `report` on staged `.jrxml` files |
-| `commit-msg` | `gitlint` | Conventional Commit subject (`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`) |
+| `commit-msg` | `gitlint` | Conventional Commit subject; no trailing whitespace/tabs; no double spaces; title/body length |
+| `commit-msg` | `codespell` | common misspellings in the commit message |
 
 > Commit messages are no longer checked by `myhooks` itself — the old
-> LanguageTool `commitmsg` step was removed. `gitlint` replaces it and is
-> configured by `.gitlint`.
+> LanguageTool `commitmsg` step was removed. The `commit-msg` checks are now the
+> maintained `gitlint` hook (configured by `.gitlint`) and `codespell`.
 
 ## Prerequisites
 
@@ -77,11 +78,18 @@ repos:
     rev: v0.19.1
     hooks:
       - id: gitlint
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        stages: [commit-msg]
+        args: ["-L", "jrxml,jsonql,jasperreports,subreport"]
 ```
 
 `myhooks` is pinned to `stages: [pre-commit]` so it runs once, on the staged
-`.jrxml` files. The `gitlint` hook comes with `stages: [commit-msg]` from its
-own manifest.
+`.jrxml` files. `gitlint` brings `stages: [commit-msg]` from its own manifest;
+`codespell` is pinned to the same stage here.
 
 ## 4. Install pre-commit and the git hooks
 
@@ -104,7 +112,7 @@ pre-commit install --hook-type pre-commit --hook-type commit-msg
 ```
 
 Both are required: `pre-commit` for the `.jrxml` steps and `commit-msg` for
-gitlint.
+gitlint and codespell.
 
 ## 5. Verify
 
@@ -121,10 +129,49 @@ pre-commit run gitlint --hook-stage commit-msg --commit-msg-filename /tmp/msg
 # 3. ...and accept a conventional one.
 printf 'feat(report): add a report\n' > /tmp/msg
 pre-commit run gitlint --hook-stage commit-msg --commit-msg-filename /tmp/msg
+
+# 4. codespell should flag a misspelling.
+printf 'feat(report): add teh report\n' > /tmp/msg
+pre-commit run codespell --hook-stage commit-msg --commit-msg-filename /tmp/msg
 ```
 
 A normal commit then behaves as expected: `add stuff` is blocked,
-`feat(report): add a report` is allowed.
+`feat(report): add a report` is allowed, and `feat(report): add teh report`
+fails on the `teh` misspelling.
+
+## What the commit-message checks enforce
+
+`gitlint` (`.gitlint`):
+
+- Conventional Commit subject with the 11 accepted types (CT1).
+- No trailing whitespace or hard tabs in the subject or body — the default
+  `title-trailing-whitespace` (T2), `body-trailing-whitespace` (B2),
+  `title-hard-tab` (T4) and `body-hard-tab` (B3) rules.
+- No double spaces in the subject or body — the named `no-double-space` rules.
+- Subject ≤ 72 characters, body lines ≤ 100 characters.
+
+`codespell`:
+
+- Common misspellings in the whole message. It does **not** check grammar.
+- It **blocks** the commit. Domain words are listed in `args` via `-L`
+  (`jrxml`, `jsonql`, …); add more there or in a `.codespellrc` when you get a
+  false positive.
+- A commit that intentionally contains a misspelling (for example
+  `fix: rename recieve to receive`) is rejected too. To only warn instead of
+  block, replace the codespell entry with a local advisory hook:
+
+  ```yaml
+  - repo: local
+    hooks:
+      - id: codespell-commit-msg
+        name: codespell (advisory)
+        entry: sh -c 'codespell -L jrxml,jsonql,jasperreports,subreport "$1" || true' --
+        language: system
+        always_run: true
+        stages: [commit-msg]
+  ```
+
+  This needs `codespell` on `PATH` (for example `pipx install codespell`).
 
 ## Teams and multiple machines
 
@@ -161,6 +208,10 @@ A normal commit then behaves as expected: `add stuff` is blocked,
 | `myhooks: unknown argument: commitmsg` | A stale raw `commit-msg` hook from an older myhooks install. Run `scripts/deactivate-hooks.sh /path/to/your-repo`. |
 | `No such rule 'contrib-title-conventional-commits'` | `.gitlint` is missing or not at the repository root; gitlint reads it from there. |
 | pre-commit: `hook id 'myhooks-commitmsg' not found` | That hook id was removed. Delete it from your config and add the gitlint repo instead. |
+| gitlint: `Title does not match regex (^(?!.*  ))` | The subject contains two consecutive spaces. |
+| gitlint: `Body does not match regex (...)` | The body contains two consecutive spaces. |
+| codespell flags a word you use deliberately | Add it to `-L` in `.pre-commit-config.yaml`, or to a `.codespellrc`. |
+| codespell blocks a commit that fixes a typo | It blocks by design; use the advisory hook or `git commit --no-verify`. |
 | The commit is stopped with "applied" changes | By design: myhooks leaves edits unstaged so you review the diff, then re-stage and commit. |
 
 ## Appendix: file contents
@@ -178,8 +229,8 @@ A normal commit then behaves as expected: `add stuff` is blocked,
 # `myhooks` is declared locally so it runs a prebuilt fat jar; run
 # `mvn package` in the myhooks-java checkout first.
 #
-# Commit-message checking is the maintained `gitlint` hook, configured by
-# `.gitlint`.
+# Commit-message checking is the maintained `gitlint` hook (configured by
+# `.gitlint`) plus codespell for spelling.
 repos:
   - repo: local
     hooks:
@@ -196,6 +247,13 @@ repos:
     rev: v0.19.1
     hooks:
       - id: gitlint
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        stages: [commit-msg]
+        args: ["-L", "jrxml,jsonql,jasperreports,subreport"]
 ```
 
 ### `.gitlint`
@@ -225,6 +283,13 @@ line-length=72
 
 [body-max-line-length]
 line-length=100
+
+# No double spaces in the subject or body (gitlint has no built-in rule).
+[title-match-regex:no-double-space]
+regex=^(?!.*  )
+
+[body-match-regex:no-double-space]
+regex=(?s)\A(?!.*  )
 ```
 
 ## Alternative: raw git hooks (no pre-commit framework)
@@ -239,5 +304,6 @@ scripts/install-hooks.sh /path/to/your-repo
 ```
 
 This installs only the `pre-commit` hook. It does **not** provide commit-message
-checking — use the pre-commit framework with gitlint for that. To remove the raw
-hooks again, run `scripts/deactivate-hooks.sh /path/to/your-repo`.
+checking — use the pre-commit framework with gitlint and codespell for that. To
+remove the raw hooks again, run
+`scripts/deactivate-hooks.sh /path/to/your-repo`.

@@ -4,10 +4,11 @@ A single Git hook for JasperReports `.jrxml` files (JasperReports 7.x), written
 in Java so it can use the real JasperReports engine. Installed as the
 `pre-commit` hook it runs the file-check steps on the staged files.
 
-Commit messages are **not** handled by this tool. They are checked by
-[gitlint](https://jorisroovers.com/gitlint/) through the pre-commit framework
-(this repository's `.pre-commit-config.yaml` + `.gitlint`), which replaced the
-old LanguageTool-based `commitmsg` step.
+Commit messages are **not** handled by this tool. The pre-commit framework
+checks them with [gitlint](https://jorisroovers.com/gitlint/) (Conventional
+Commits, whitespace and spacing rules) and
+[codespell](https://github.com/codespell-project/codespell) (spelling). This
+replaced the old LanguageTool-based `commitmsg` step.
 
 ## Steps
 
@@ -66,10 +67,12 @@ Deactivation only removes hooks carrying the myhooks marker and restores any
 This repository ships a ready-to-use `.pre-commit-config.yaml`:
 
 - a **local** `myhooks` hook that runs `target/myhooks-1.0.0.jar` on staged
-  `.jrxml` files (run `mvn package` first), and
+  `.jrxml` files (run `mvn package` first),
 - the maintained [gitlint](https://jorisroovers.com/gitlint/) hook on the
   `commit-msg` stage, configured by `.gitlint` (Conventional Commit subject;
-  the allowed types match the old `commitmsg` step).
+  no trailing whitespace, tabs or double spaces), and
+- [codespell](https://github.com/codespell-project/codespell) for spelling in
+  the commit message.
 
 ```sh
 pre-commit install --hook-type pre-commit --hook-type commit-msg
@@ -81,8 +84,8 @@ repository. Note that the local hook's `entry` must point at the **built jar**
 
 `require_serial: true` is set because the steps are interactive and must not run
 concurrently. `myhooks` no longer provides a `commit-msg` hook: remove
-`myhooks-commitmsg` from an existing config and add the gitlint repo (as in this
-repository's config) for commit-message checking.
+`myhooks-commitmsg` from an existing config and add the gitlint and codespell
+repos (as in this repository's config) for commit-message checking.
 
 ### Windows
 

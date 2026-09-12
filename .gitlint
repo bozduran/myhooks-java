@@ -23,3 +23,14 @@ line-length=72
 
 [body-max-line-length]
 line-length=100
+
+# A "no double spaces" check: gitlint has no built-in rule for repeated spaces,
+# so two named rule instances reject it in the subject and in the body.
+# Trailing whitespace and hard tabs are already covered by the default rules
+# title-trailing-whitespace (T2), body-trailing-whitespace (B2),
+# title-hard-tab (T4) and body-hard-tab (B3), so they need no configuration.
+[title-match-regex:no-double-space]
+regex=^(?!.*  )
+
+[body-match-regex:no-double-space]
+regex=(?s)\A(?!.*  )
