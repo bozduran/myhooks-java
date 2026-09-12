@@ -4,10 +4,11 @@
 
 `myhooks` is a single Git hook for JasperReports `.jrxml` report files
 (JasperReports 7.x), written in **Java 17** so it can use the real
-JasperReports engine. Installed as the `commit-msg` hook it validates the
-commit message; installed as the `pre-commit` hook it enforces a consistent
-report convention by inspecting the staged `.jrxml` files and, on approval,
-rewriting them in place.
+JasperReports engine. Installed as the `pre-commit` hook it enforces a
+consistent report convention by inspecting the staged `.jrxml` files and, on
+approval, rewriting them in place. Commit-message validation is not part of
+this tool: it is delegated to `gitlint` through the pre-commit framework (see
+`.pre-commit-config.yaml` and `.gitlint`).
 
 The hook does not block a commit for "cosmetic" reasons it can fix itself
 silently: it is **interactive**, shows every change in git-diff style, and lets
@@ -15,10 +16,6 @@ the author accept or reject each change.
 
 ## 2. Goals
 
-- Require a Conventional Commit subject and report spelling/grammar issues
-  with LanguageTool (`commit-msg` hook). Only the semantic subject check
-  blocks a commit; spelling/grammar issues never block — the author may
-  correct them or skip and proceed.
 - Remove dead declarations (unused `<parameter>`/`<field>`/`<variable>`).
 - Migrate SQL `<query>` elements and legacy
   `net.sf.jasperreports.json.field.expression` properties to the jsonql
@@ -34,12 +31,11 @@ the author accept or reject each change.
 ## 3. Step order
 
 ```
-commitmsg (commit-msg hook) → clear → format → sort → textcheck → validate → lint → report
+clear → format → sort → textcheck → validate → lint → report
 ```
 
 | Step | What it does |
 | --- | --- |
-| `commitmsg` | Conventional Commit subject (blocks) + LanguageTool spell/grammar report (non-blocking) |
 | `clear` | SQL→jsonql query migration, unused declarations, jsonql property fixes, description↔jsonql sync |
 | `format` | `positionType="Float"` on textField/subreport, `textAdjust="StretchHeight"` on textField, `<jasperReport name>` alignment, Java-expression formatting (AST) |
 | `sort` | reorder band/frame `<element>` children by geometry (y then x, stable) |
@@ -48,25 +44,21 @@ commitmsg (commit-msg hook) → clear → format → sort → textcheck → vali
 | `lint` | static-analysis warnings (constant `printWhenExpression`, unchecked null dereference, missing `removeLineWhenBlank="true"` on textField/subreport); informational, never modifies, always returns 0 |
 | `report` | include-chain (informational, never modifies, always returns 0) |
 
-The `commitmsg` step is not part of the pre-commit sequence: it runs only via
-the `commit-msg` hook (or an explicit `myhooks commitmsg <message-file>`). It
-returns 1 only when the subject is not a Conventional Commit; spelling and
-grammar issues reported by LanguageTool are always skippable (exit 0).
+The step order above is the complete pre-commit sequence. Commit-message
+checking is out of scope for this tool and is handled by the `gitlint`
+`commit-msg` hook wired in `.pre-commit-config.yaml`.
 
 ## 4. Command-line interface
 
 ```
 myhooks [file.jrxml ...]          run all enabled steps on the staged files
-myhooks <step> [file.jrxml ...]   run one step (commitmsg|clear|format|sort|textcheck|validate|report)
-myhooks commitmsg <message-file>  validate the commit message (commit-msg hook)
+myhooks <step> [file.jrxml ...]   run one step (clear|format|sort|textcheck|validate|lint|report)
 myhooks -h | --help               print usage
 ```
 
 - A leading argument equal to a known step name runs only that step.
 - Otherwise all steps run in the data-driven order above.
 - An unknown leading argument is an error (usage is printed, exit 2).
-- When invoked with the program name `commit-msg`, the `commitmsg` step runs
-  automatically with the message file.
 
 ### File selection
 
@@ -85,8 +77,6 @@ myhooks -h | --help               print usage
 
 - Every mutating step returns 1 when it applied changes (left unstaged) or hit
   an error. `report` always returns 0.
-- `commitmsg` returns 1 only for a semantic (Conventional Commit subject)
-  failure; spelling/grammar issues never block the commit.
 - All steps run regardless of each other's results, so the author reviews all
   changes in one pass; any step returning 1 makes the overall exit code 1.
 

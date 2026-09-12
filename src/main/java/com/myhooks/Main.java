@@ -11,7 +11,6 @@ import com.myhooks.step.Context;
 import com.myhooks.step.FileStep;
 import com.myhooks.step.Step;
 import com.myhooks.steps.clear.ClearDiscoverer;
-import com.myhooks.steps.commitmsg.CommitMsgStep;
 import com.myhooks.steps.format.FormatDiscoverer;
 import com.myhooks.steps.lint.LintStep;
 import com.myhooks.steps.report.ReportStep;
@@ -31,11 +30,11 @@ import picocli.CommandLine.Command;
 
 /**
  * picocli CLI entry point. Dispatches over a {@code List<Step>} registry in a
- * data-driven order, honoring the {@code commit-msg} basename, per-step help,
- * unknown-argument validation, and {@code MYHOOKS_DISABLE} toggles.
+ * data-driven order, honoring per-step help, unknown-argument validation, and
+ * {@code MYHOOKS_DISABLE} toggles.
  */
 @Command(name = "myhooks",
-        description = "JasperReports pre-commit / commit-msg hook (commitmsg + clear + format + sort + textcheck + validate + lint + report).")
+        description = "JasperReports pre-commit hook (clear + format + sort + textcheck + validate + lint + report).")
 public final class Main {
 
     private static final List<String> PRE_COMMIT_ORDER = List.of(
@@ -89,7 +88,6 @@ public final class Main {
                 Prompt::ask, Freeform::ask);
 
         Map<String, Step> steps = new LinkedHashMap<>();
-        steps.put("commitmsg", new CommitMsgStep());
         steps.put("clear", new FileStep("clear", "myhooks clear [file.jrxml ...]", new ClearDiscoverer(), context));
         steps.put("format", new FileStep("format", "myhooks format [file.jrxml ...]", new FormatDiscoverer(), context));
         steps.put("sort", new FileStep("sort", "myhooks sort [file.jrxml ...]", new SortDiscoverer(), context));
@@ -104,9 +102,6 @@ public final class Main {
     public int execute(String[] args) {
         List<String> list = List.of(args);
 
-        if (invokedAsCommitMsg()) {
-            return runStep("commitmsg", list);
-        }
         if (list.isEmpty()) {
             return runAll(List.of());
         }
@@ -155,8 +150,7 @@ public final class Main {
         new CommandLine(this).usage(context.out());
         context.out().println("Usage:");
         context.out().println("  myhooks [file.jrxml ...]          run all enabled steps on the staged files");
-        context.out().println("  myhooks <step> [file.jrxml ...]   run one step (commitmsg|clear|format|sort|textcheck|validate|report)");
-        context.out().println("  myhooks commitmsg <message-file>  validate the commit message (commit-msg hook)");
+        context.out().println("  myhooks <step> [file.jrxml ...]   run one step (clear|format|sort|textcheck|validate|lint|report)");
     }
 
     private void printStepUsage(String name) {
@@ -175,16 +169,5 @@ public final class Main {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
-    }
-
-    static boolean invokedAsCommitMsg() {
-        String command = System.getProperty("sun.java.command", "");
-        if (command.isEmpty()) {
-            return false;
-        }
-        String base = command.split("\\s+", 2)[0];
-        int slash = Math.max(base.lastIndexOf('/'), base.lastIndexOf('\\'));
-        String name = base.substring(slash + 1);
-        return name.equals("commit-msg") || name.equals("commit-msg.jar");
     }
 }

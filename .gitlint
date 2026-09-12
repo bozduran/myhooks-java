@@ -1,0 +1,25 @@
+# Commit-message rules for this repository.
+#
+# Enforced by the `gitlint` pre-commit hook on the commit-msg stage (see
+# .pre-commit-config.yaml). This replaces the old Java `commitmsg` step, which
+# enforced a Conventional Commit subject and reported LanguageTool
+# spelling/grammar issues.
+
+[general]
+# Enable gitlint's Conventional Commits rule (CT1).
+contrib=contrib-title-conventional-commits
+
+# The removed `commitmsg` step validated the subject only, so keep subject-only
+# commits valid and short bodies allowed; gitlint otherwise requires a body and
+# a body of at least 20 characters.
+ignore=body-is-missing,body-min-length
+
+[contrib-title-conventional-commits]
+# The commit types the removed `commitmsg` step accepted.
+types=feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert
+
+[title-max-length]
+line-length=72
+
+[body-max-line-length]
+line-length=100

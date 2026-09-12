@@ -1,12 +1,13 @@
 <#
 .SYNOPSIS
-    Removes the pre-commit and commit-msg hooks installed by
-    scripts/install-hooks.ps1 (or install-hooks.sh), restoring any hook that
-    was backed up.
+    Removes the pre-commit hook installed by scripts/install-hooks.ps1 (or
+    install-hooks.sh), restoring any hook that was backed up. It also retires
+    the commit-msg hook installed by older myhooks versions.
 
 .DESCRIPTION
-    A hook is only removed when it carries the myhooks marker comment; hooks
-    installed by something else are left untouched. If a
+    Commit messages are now checked by the gitlint pre-commit hook rather than
+    by myhooks. A hook is only removed when it carries the myhooks marker
+    comment; hooks installed by something else are left untouched. If a
     <hook>.myhooks-backup file exists it is restored over the removed hook.
 
 .PARAMETER TargetRepo
@@ -57,6 +58,7 @@ function Remove-MyHook([string]$Name) {
 }
 
 Remove-MyHook 'pre-commit'
+# Legacy: older myhooks versions also installed a commit-msg hook.
 Remove-MyHook 'commit-msg'
 
 Write-Host "myhooks hooks deactivated in $HooksDir"

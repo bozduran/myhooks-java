@@ -11,7 +11,7 @@
 Rewrite `myhooks` in **Java 17 (Maven)** so it can use the real JasperReports
 engine, replacing hand-rolled XML/text parsing where the engine is
 authoritative. Deliver as a new module in `refactor-java/`, built into a
-**fat jar** (`maven-shade`) invoked by the pre-commit and commit-msg hooks.
+**fat jar** (`maven-shade`) invoked by the pre-commit hook.
 Story by story, one commit per passing story.
 
 ## 2. Locked decisions
@@ -23,7 +23,7 @@ Story by story, one commit per passing story.
 | 3 | Staging | **All changes uniformly unstaged** (no `git add`) |
 | 4 | jsonql fixes | **Interactive + unstaged** |
 | 5 | "All" scope | **Per fix-group** |
-| 6 | commit-msg hook | **Include commitmsg** (parity with Go) |
+| 6 | Commit messages | **Out of scope**: gitlint via the pre-commit framework (the Java `commitmsg` step was later removed — see §6) |
 | 7 | git access | **Shell out to git** |
 | 8 | JasperReports | **Full integration** (see §5) |
 | 9 | Libraries now | Lombok, JUnit 5, picocli, JLine, JavaParser, java-diff-utils; **defer GraalVM + PIT** |
@@ -47,7 +47,6 @@ refactor-java/
 │   ├── textrules/                    PeriodSpace, DoubleSpace, Unrenderable, JavaExpr, Newline
 │   ├── includegraph/                 Graph.java, Invert.java, Render.java
 │   └── steps/
-│       ├── commitmsg/CommitMsgStep.java
 │       ├── clear/ClearStep.java
 │       ├── format/FormatStep.java
 │       ├── sort/SortStep.java
@@ -69,8 +68,8 @@ class Group { String label; List<Fix> fixes; }   // one "All" scope per group
 
 interface Discoverer { List<Group> discover(Context, Path) throws Exception; }
 
-// FileStep adapts a Discoverer into a Step via Engine (the 5 file steps).
-// CommitMsgStep and ReportStep implement Step directly (not file-oriented).
+// FileStep adapts a Discoverer into a Step via Engine (the file steps).
+// ValidateStep and ReportStep implement Step directly (not file-oriented).
 
 // xmlspan
 class Node { String tag, kind; List<Attr> attrs; Node parent; List<Node> children;
@@ -122,10 +121,11 @@ unknown-arg error, coordinate warnings, surface git failures (mutating steps
 exit 1; informational warn+0). New: JR-based unused detection, XSD + compile
 validation gate, single-quote-safe attribute edits via `xmlspan.Attr`.
 
-Post-plan change: `commitmsg` now uses [LanguageTool](https://languagetool.org/)
-(`org.languagetool:language-en`) for spelling + grammar instead of the bundled
-`misspell.dict` word list. Only the Conventional Commit semantic check blocks a
-commit; spelling/grammar issues are reported but always skippable (exit 0).
+Post-plan change: the Java `commitmsg` step — LanguageTool spelling/grammar plus
+a hand-rolled Conventional Commit regex — has been **removed**. Commit messages
+are now checked by the maintained [gitlint](https://jorisroovers.com/gitlint/)
+`commit-msg` hook declared in `.pre-commit-config.yaml` and configured by
+`.gitlint`; `myhooks` only runs the file steps.
 
 ## 7. Work packages → stories
 
@@ -139,7 +139,7 @@ commit; spelling/grammar issues are reported but always skippable (exit 0).
 | US-05 | `discover` + `git` |
 | US-06 | `step` (interfaces + Engine) |
 | US-07 | `jrutil` (JR wrappers) |
-| US-08 | `steps/commitmsg` |
+| US-08 | `steps/commitmsg` (later removed — see §6) |
 | US-09 | `steps/format` |
 | US-10 | `steps/sort` |
 | US-11 | `steps/textcheck` |

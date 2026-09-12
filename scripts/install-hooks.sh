@@ -1,11 +1,16 @@
 #!/bin/sh
-# Installs the myhooks fat jar as the pre-commit and commit-msg git hooks.
+# Installs the myhooks fat jar as the pre-commit git hook.
 #
 # Usage: scripts/install-hooks.sh [target-repo]
 #   target-repo defaults to the current directory.
 #
 # Re-running is safe. The first time a hook is installed, any pre-existing hook
 # is copied to <hook>.myhooks-backup; scripts/deactivate-hooks.sh restores it.
+#
+# Commit messages are no longer checked by myhooks. Use the pre-commit framework
+# with the gitlint hook instead (see .pre-commit-config.yaml and .gitlint). Older
+# myhooks versions installed a commit-msg hook, which is retired here so that an
+# upgraded jar cannot break `git commit`.
 set -eu
 
 PROJECT_DIR=$(cd "$(dirname "$0")/.." && pwd)
@@ -35,8 +40,26 @@ backup() {
     fi
 }
 
+# Older myhooks releases installed a commit-msg hook that ran the now-removed
+# `myhooks commitmsg` step; leaving it behind would make every commit fail with
+# an unknown-argument error. Only a hook carrying the myhooks marker is touched.
+retire_legacy_commit_msg() {
+    path="$HOOKS_DIR/commit-msg"
+    bak="$path.myhooks-backup"
+    if [ ! -f "$path" ] || ! grep -q "myhooks-hook:" "$path" 2>/dev/null; then
+        return
+    fi
+    rm -f "$path"
+    if [ -f "$bak" ]; then
+        mv "$bak" "$path"
+        echo "restored previous commit-msg hook"
+    else
+        echo "removed stale myhooks commit-msg hook (commit messages are now checked by gitlint)"
+    fi
+}
+
 backup pre-commit
-backup commit-msg
+retire_legacy_commit_msg
 
 cat > "$HOOKS_DIR/pre-commit" <<EOF
 #!/bin/sh
@@ -45,11 +68,4 @@ exec java -jar "$JAR" "\$@"
 EOF
 chmod +x "$HOOKS_DIR/pre-commit"
 
-cat > "$HOOKS_DIR/commit-msg" <<EOF
-#!/bin/sh
-$MARKER
-exec java -jar "$JAR" commitmsg "\$1"
-EOF
-chmod +x "$HOOKS_DIR/commit-msg"
-
-echo "installed pre-commit and commit-msg hooks in $HOOKS_DIR"
+echo "installed pre-commit hook in $HOOKS_DIR"
