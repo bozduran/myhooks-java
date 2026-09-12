@@ -66,6 +66,28 @@ class LintStepTest {
     }
 
     @Test
+    void warnsWhenRemoveLineWhenBlankIsMissing() throws Exception {
+        String body = """
+                	<detail><band height="30">
+                		<element kind="textField" uuid="u1" x="0" y="0" width="100" height="20">
+                			<expression><![CDATA["x"]]></expression>
+                		</element>
+                		<element kind="subreport" uuid="s1" x="0" y="0" width="100" height="20"/>
+                	</band></detail>
+                """;
+        String raw = report(body);
+        Path file = dir.resolve("t.jrxml");
+        Files.writeString(file, raw);
+
+        String out = run(file);
+
+        int textLine = lineOf(raw, "<element kind=\"textField\"");
+        int subLine = lineOf(raw, "<element kind=\"subreport\"");
+        assertTrue(out.contains(file + ":" + textLine + ": textField is missing removeLineWhenBlank=\"true\""), out);
+        assertTrue(out.contains(file + ":" + subLine + ": subreport is missing removeLineWhenBlank=\"true\""), out);
+    }
+
+    @Test
     void printsNothingWhenClean() throws Exception {
         String body = """
                 	<detail><band height="30">

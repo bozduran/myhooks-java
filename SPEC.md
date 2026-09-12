@@ -41,11 +41,11 @@ commitmsg (commit-msg hook) → clear → format → sort → textcheck → vali
 | --- | --- |
 | `commitmsg` | Conventional Commit subject (blocks) + LanguageTool spell/grammar report (non-blocking) |
 | `clear` | SQL→jsonql query migration, unused declarations, jsonql property fixes, description↔jsonql sync |
-| `format` | `positionType`/`textAdjust` attributes, `<jasperReport name>` alignment, Java-expression formatting (AST) |
+| `format` | `positionType="Float"` on textField/subreport, `textAdjust="StretchHeight"` on textField, `<jasperReport name>` alignment, Java-expression formatting (AST) |
 | `sort` | reorder band/frame `<element>` children by geometry (y then x, stable) |
 | `textcheck` | period space, double-space, unrenderable characters, newline normalization |
 | `validate` | JRXML XSD validation + `JasperCompileManager` compile gate on modified files |
-| `lint` | static-analysis warnings (informational, never modifies, always returns 0) |
+| `lint` | static-analysis warnings (constant `printWhenExpression`, unchecked null dereference, missing `removeLineWhenBlank="true"` on textField/subreport); informational, never modifies, always returns 0 |
 | `report` | include-chain (informational, never modifies, always returns 0) |
 
 The `commitmsg` step is not part of the pre-commit sequence: it runs only via
@@ -120,6 +120,24 @@ The shared prompt offers four choices per fix:
   make every prompt decline instantly.)
 - A free-form prompt is used only for the SQL→jsonql migration (the jsonql
   expression) and is always line-based.
+
+### Output layout
+
+- Each file is announced with an `=` header naming the step and file
+  (`format · path/Foo.jrxml`), including files with no fixes; a fix-free file
+  then prints `[ok] path` under that header.
+- Each fix-group prints under a dashed sub-banner with its fix count
+  (`positionType (3)`), so `positionType` and `textAdjust` are visibly separate
+  questions.
+- Diffs show the absolute file line number in a gutter. The red/green background
+  covers the whole changed line — indentation, `-`/`+` marker, separating space,
+  code, and padding out to the output width.
+- Output width and rule width come from `COLUMNS`, clamped to 40–100 (default
+  52).
+- Each step prints `applied X, skipped Y, Z file(s) stopped`; a full run prints
+  a final `total:` line. `applied` counts applied fixes, `skipped` counts
+  declined fixes plus skipped files, and `stopped` counts written or failed
+  files.
 
 ## 8. JasperReports integration
 

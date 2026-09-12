@@ -1,8 +1,10 @@
 package com.myhooks.steps.clear;
 
 import com.myhooks.diffui.DiffRenderer;
+import com.myhooks.diffui.Output;
 import com.myhooks.edit.Edit;
 import com.myhooks.edit.EditSet;
+import com.myhooks.io.Lines;
 import com.myhooks.io.XmlSource;
 import com.myhooks.jrutil.JrExpressions;
 import com.myhooks.jrutil.JrSchema;
@@ -99,7 +101,7 @@ public final class ClearDiscoverer implements Discoverer {
                 int[] span = removalSpan(raw, d.start(), d.end());
                 unusedFixes.add(new EditFix("delete unused " + d.kind().name().toLowerCase() + " '" + d.name() + "'",
                         raw.substring(span[0], d.end()), "",
-                        new Edit(span[0], span[1], ""), context.color()));
+                        new Edit(span[0], span[1], ""), context.color(), Lines.lineOf(raw, span[0])));
             }
         }
         if (!unusedFixes.isEmpty()) {
@@ -124,7 +126,7 @@ public final class ClearDiscoverer implements Discoverer {
                     d.descriptionText(), d.jsonqlValue(),
                     new Edit(d.descriptionStart(), d.descriptionEnd(),
                             d.descriptionCdata() ? d.jsonqlValue() : JrStringUtil.encode(d.jsonqlValue())),
-                    context.color()));
+                    context.color(), Lines.lineOf(raw, d.descriptionStart())));
         }
         if (!syncFixes.isEmpty()) {
             groups.add(new Group("description sync", syncFixes));
@@ -144,18 +146,19 @@ public final class ClearDiscoverer implements Discoverer {
                     int[] span = removalSpan(raw, d.legacyStart(), d.legacyEnd());
                     jsonqlFixes.add(new EditFix("remove legacy " + JSON_FIELD_PROPERTY + " from field '" + d.name() + "'",
                             raw.substring(span[0], d.legacyEnd()), "",
-                            new Edit(span[0], span[1], ""), context.color()));
+                            new Edit(span[0], span[1], ""), context.color(), Lines.lineOf(raw, span[0])));
                 } else {
                     jsonqlFixes.add(new EditFix("rename " + JSON_FIELD_PROPERTY + " to " + JSONQL_FIELD_PROPERTY,
                             JSON_FIELD_PROPERTY, JSONQL_FIELD_PROPERTY,
-                            new Edit(d.legacyNameStart(), d.legacyNameEnd(), JSONQL_FIELD_PROPERTY), context.color()));
+                            new Edit(d.legacyNameStart(), d.legacyNameEnd(), JSONQL_FIELD_PROPERTY), context.color(),
+                            Lines.lineOf(raw, d.legacyNameStart())));
                 }
             } else if (!d.hasJsonql() && d.hasDescription() && !d.descriptionText().isBlank()) {
                 String line = jsonqlPropertyLine(d);
                 int insertAt = lineStart(raw, d.endTag());
                 jsonqlFixes.add(new EditFix("add " + JSONQL_FIELD_PROPERTY + " = \"" + d.descriptionText() + "\"",
                         "", line.strip(),
-                        new Edit(insertAt, insertAt, line + "\n"), context.color()));
+                        new Edit(insertAt, insertAt, line + "\n"), context.color(), Lines.lineOf(raw, insertAt)));
             }
         }
         if (!jsonqlFixes.isEmpty()) {
@@ -368,7 +371,8 @@ public final class ClearDiscoverer implements Discoverer {
 
         @Override
         public String diff() {
-            return DiffRenderer.render(raw.substring(query.start(), query.end()), "", "          ", color);
+            return DiffRenderer.render(raw.substring(query.start(), query.end()), "", "          ", color,
+                    Lines.lineOf(raw, query.start()), Output.width());
         }
 
         @Override

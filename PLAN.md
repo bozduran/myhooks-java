@@ -88,9 +88,17 @@ class EditMerge { static Edit mergeSameSpan(List<Edit>); }
 
 The "All" choice applies to the rest of the **current group**; "Skip file"
 applies to the file. The file steps return one group per fix-kind (`clear` and
-`format` return several), which preserves the per-fix-group semantics. Each
-group is printed under a dashed banner (the group name between two rules) so
-consecutive questions stay visually separate.
+`format` return several), which preserves the per-fix-group semantics.
+
+Every file is announced with an `=` header naming the step and the file
+(`format · path/Foo.jrxml`), including files with no fixes, so a multi-step,
+multi-file run stays readable. Each group then prints under a dashed sub-banner
+carrying its fix count (`positionType (3)`). Diffs show the absolute file line
+number in a gutter and paint the whole changed line (indentation, marker, space,
+and trailing padding) in red/green. Rules and the colored bar are sized from
+`COLUMNS` (clamped 40–100, default 52). Each step ends with its counts
+(`applied 4, skipped 2, 1 file stopped`), and the full run prints a `total:`
+line.
 
 ## 5. JasperReports integration (the reason for Java)
 

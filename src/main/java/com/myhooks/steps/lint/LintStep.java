@@ -1,11 +1,13 @@
 package com.myhooks.steps.lint;
 
 import com.myhooks.git.GitException;
+import com.myhooks.io.Lines;
 import com.myhooks.io.XmlSource;
 import com.myhooks.step.Context;
 import com.myhooks.step.Step;
 import com.myhooks.steps.lint.rules.ConstantPrintWhen;
 import com.myhooks.steps.lint.rules.NullDereference;
+import com.myhooks.steps.lint.rules.RemoveLineWhenBlank;
 import com.myhooks.xmlspan.Node;
 import com.myhooks.xmlspan.XmlScanner;
 import java.io.IOException;
@@ -23,7 +25,8 @@ import java.util.List;
 public final class LintStep implements Step {
 
     /** The registered rules, in run order. Add a new rule here to enable it. */
-    private static final List<Rule> RULES = List.of(new ConstantPrintWhen(), new NullDereference());
+    private static final List<Rule> RULES = List.of(
+            new ConstantPrintWhen(), new NullDereference(), new RemoveLineWhenBlank());
 
     private final List<Rule> rules;
 
@@ -101,19 +104,7 @@ public final class LintStep implements Step {
         }
         warnings.sort(Comparator.comparingInt(Warning::offset));
         for (Warning warning : warnings) {
-            context.out().println(file + ":" + lineOf(raw, warning.offset()) + ": " + warning.message());
+            context.out().println(file + ":" + Lines.lineOf(raw, warning.offset()) + ": " + warning.message());
         }
-    }
-
-    /** 1-based line number of a byte offset in {@code raw}. */
-    private static int lineOf(String raw, int offset) {
-        int line = 1;
-        int end = Math.min(offset, raw.length());
-        for (int i = 0; i < end; i++) {
-            if (raw.charAt(i) == '\n') {
-                line++;
-            }
-        }
-        return line;
     }
 }

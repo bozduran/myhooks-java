@@ -2,7 +2,9 @@ package com.myhooks;
 
 import com.myhooks.diffui.DiffRenderer;
 import com.myhooks.diffui.Freeform;
+import com.myhooks.diffui.Output;
 import com.myhooks.diffui.Prompt;
+import com.myhooks.diffui.Section;
 import com.myhooks.diffui.Terminals;
 import com.myhooks.discover.FileDiscovery;
 import com.myhooks.step.Context;
@@ -142,6 +144,9 @@ public final class Main {
             if (runStep(name, args) != 0) {
                 stop = true;
             }
+        }
+        if (!context.tally().isEmpty()) {
+            context.out().println(Section.header("total: " + context.tally().summary(), Output.width()));
         }
         return stop ? 1 : 0;
     }
