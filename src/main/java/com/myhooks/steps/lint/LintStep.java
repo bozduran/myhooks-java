@@ -6,6 +6,7 @@ import com.myhooks.io.XmlSource;
 import com.myhooks.step.Context;
 import com.myhooks.step.Step;
 import com.myhooks.steps.lint.rules.ConstantPrintWhen;
+import com.myhooks.steps.lint.rules.MarkupTagWithoutMarkup;
 import com.myhooks.steps.lint.rules.NullDereference;
 import com.myhooks.steps.lint.rules.RemoveLineWhenBlank;
 import com.myhooks.xmlspan.Node;
@@ -26,7 +27,8 @@ public final class LintStep implements Step {
 
     /** The registered rules, in run order. Add a new rule here to enable it. */
     private static final List<Rule> RULES = List.of(
-            new ConstantPrintWhen(), new NullDereference(), new RemoveLineWhenBlank());
+            new ConstantPrintWhen(), new MarkupTagWithoutMarkup(), new NullDereference(),
+            new RemoveLineWhenBlank());
 
     private final List<Rule> rules;
 

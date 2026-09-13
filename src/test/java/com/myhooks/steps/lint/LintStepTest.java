@@ -88,6 +88,26 @@ class LintStepTest {
     }
 
     @Test
+    void warnsOnMarkupTagsInTextFieldWithoutMarkup() throws Exception {
+        String body = """
+                	<detail><band height="30">
+                		<element kind="textField" uuid="u1" x="0" y="0" width="100" height="20" removeLineWhenBlank="true">
+                			<expression><![CDATA["Le <b>boulanger</b> est sympa."]]></expression>
+                		</element>
+                	</band></detail>
+                """;
+        String raw = report(body);
+        Path file = dir.resolve("t.jrxml");
+        Files.writeString(file, raw);
+
+        String out = run(file);
+
+        int line = lineOf(raw, "<element kind=\"textField\"");
+        assertTrue(out.contains(file + ":" + line + ": text contains markup tag <b> but markup is not "
+                + "\"styled\", \"html\" or \"rtf\""), out);
+    }
+
+    @Test
     void printsNothingWhenClean() throws Exception {
         String body = """
                 	<detail><band height="30">

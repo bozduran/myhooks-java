@@ -1,6 +1,10 @@
 #!/bin/sh
-# Removes the pre-commit and commit-msg hooks installed by
-# scripts/install-hooks.sh, restoring any hook that was backed up.
+# Removes the pre-commit hook installed by scripts/install-hooks.sh, restoring
+# any hook that was backed up.
+#
+# It also retires the commit-msg hook installed by older myhooks versions:
+# commit messages are now checked by the gitlint pre-commit hook rather than by
+# myhooks.
 #
 # Usage: scripts/deactivate-hooks.sh [target-repo]
 #   target-repo defaults to the current directory.
@@ -40,6 +44,7 @@ remove_hook() {
 }
 
 remove_hook pre-commit
+# Legacy: older myhooks versions also installed a commit-msg hook.
 remove_hook commit-msg
 
 echo "myhooks hooks deactivated in $HOOKS_DIR"

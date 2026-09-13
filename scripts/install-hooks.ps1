@@ -1,16 +1,21 @@
 <#
 .SYNOPSIS
-    Installs the myhooks fat jar as the pre-commit and commit-msg git hooks.
+    Installs the myhooks fat jar as the pre-commit git hook.
 
 .DESCRIPTION
-    Writes the two hooks as POSIX sh scripts (Git for Windows runs hooks with
-    its bundled sh) using LF line endings and UTF-8 without a BOM, so the
-    shebang stays valid. When Git's sh.exe can be located, the hooks are also
-    chmod +x'd so the MSYS executable bit is set.
+    Writes the hook as a POSIX sh script (Git for Windows runs hooks with its
+    bundled sh) using LF line endings and UTF-8 without a BOM, so the shebang
+    stays valid. When Git's sh.exe can be located, the hook is also chmod +x'd
+    so the MSYS executable bit is set.
 
     Re-running is safe. The first time a hook is installed, any pre-existing
     hook is copied to <hook>.myhooks-backup; scripts/deactivate-hooks.ps1
     restores it.
+
+    Commit messages are no longer checked by myhooks; use the pre-commit
+    framework with the gitlint hook (see .pre-commit-config.yaml and .gitlint).
+    A commit-msg hook installed by an older myhooks version is retired here so
+    that an upgraded jar cannot break `git commit`.
 
 .PARAMETER TargetRepo
     Repository whose .git\hooks directory receives the hooks. Defaults to the
@@ -105,12 +110,30 @@ function Set-HookExecutable {
     }
 }
 
+# Older myhooks releases installed a commit-msg hook that ran the now-removed
+# `myhooks commitmsg` step; leaving it behind would make every commit fail with
+# an unknown-argument error. Only a hook carrying the myhooks marker is touched.
+function Retire-LegacyCommitMsg {
+    $path = Join-Path $HooksDir 'commit-msg'
+    $bak = "${path}.myhooks-backup"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or
+        -not (Select-String -LiteralPath $path -Pattern 'myhooks-hook:' -Quiet)) {
+        return
+    }
+    Remove-Item -LiteralPath $path -Force
+    if (Test-Path -LiteralPath $bak -PathType Leaf) {
+        Move-Item -LiteralPath $bak -Destination $path
+        Write-Host 'restored previous commit-msg hook'
+    } else {
+        Write-Host 'removed stale myhooks commit-msg hook (commit messages are now checked by gitlint)'
+    }
+}
+
 Backup-Hook 'pre-commit'
-Backup-Hook 'commit-msg'
+Retire-LegacyCommitMsg
 
 Write-Hook 'pre-commit' "exec java -jar `"$JarForHook`" `"`$@`""
-Write-Hook 'commit-msg' "exec java -jar `"$JarForHook`" commitmsg `"`$1`""
 
 Set-HookExecutable
 
-Write-Host "installed pre-commit and commit-msg hooks in $HooksDir"
+Write-Host "installed pre-commit hook in $HooksDir"

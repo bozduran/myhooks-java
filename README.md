@@ -2,17 +2,17 @@
 
 A single Git hook for JasperReports `.jrxml` files (JasperReports 7.x), written
 in Java so it can use the real JasperReports engine. Installed as the
-`commit-msg` hook it validates the commit message; installed as the
 `pre-commit` hook it runs the file-check steps on the staged files.
 
-The `commitmsg` check enforces a Conventional Commit subject (this is the only
-thing that **blocks** a commit) and reports spelling/grammar issues found by
-[LanguageTool](https://languagetool.org/). Spelling/grammar issues never block:
-you can correct them or skip and commit the message as-is.
+Commit messages are **not** handled by this tool. The pre-commit framework
+checks them with [gitlint](https://jorisroovers.com/gitlint/) (Conventional
+Commits, whitespace and spacing rules) and
+[codespell](https://github.com/codespell-project/codespell) (spelling). This
+replaced the old LanguageTool-based `commitmsg` step.
 
 ## Steps
 
-`commitmsg` (commit-msg hook) → `clear` → `format` → `sort` → `textcheck` →
+`clear` → `format` → `sort` → `textcheck` →
 `validate` (XSD + `JasperCompileManager` gate) → `lint` (warnings) → `report`.
 
 Every applied change is left **unstaged** and the hook exits non-zero so you
@@ -43,10 +43,10 @@ mvn package
 powershell -ExecutionPolicy Bypass -File scripts\install-hooks.ps1 C:\src\MyReports
 ```
 
-Both write a `java -jar ...` wrapper as `/path/to/your/repo/.git/hooks/pre-commit`
-and `.git/hooks/commit-msg` (which runs `myhooks commitmsg "$1"`). Re-running is
-safe; the first time an existing hook is taken over it is copied to
-`<hook>.myhooks-backup`.
+Both write a `java -jar ...` wrapper as `/path/to/your/repo/.git/hooks/pre-commit`.
+Re-running is safe; the first time an existing hook is taken over it is copied to
+`<hook>.myhooks-backup`. A `commit-msg` hook installed by an older myhooks
+version is retired automatically, so an upgraded jar cannot break `git commit`.
 
 To remove the hooks again (Linux/macOS `scripts/deactivate-hooks.sh`, Windows
 `scripts/deactivate-hooks.ps1`):
@@ -64,18 +64,28 @@ Deactivation only removes hooks carrying the myhooks marker and restores any
 
 ### pre-commit framework
 
-Add a local hook referencing `.pre-commit-hooks.yaml`:
+This repository ships a ready-to-use `.pre-commit-config.yaml`:
 
-```yaml
-repos:
-  - repo: /path/to/myhooks-java
-    hooks:
-      - id: myhooks
-      - id: myhooks-commitmsg
+- a **local** `myhooks` hook that runs `target/myhooks-1.0.0.jar` on staged
+  `.jrxml` files (run `mvn package` first),
+- the maintained [gitlint](https://jorisroovers.com/gitlint/) hook on the
+  `commit-msg` stage, configured by `.gitlint` (Conventional Commit subject;
+  no trailing whitespace, tabs or double spaces), and
+- [codespell](https://github.com/codespell-project/codespell) for spelling in
+  the commit message.
+
+```sh
+pre-commit install --hook-type pre-commit --hook-type commit-msg
 ```
 
+See [`PRE_COMMIT.md`](PRE_COMMIT.md) for copying this configuration into another
+repository. Note that the local hook's `entry` must point at the **built jar**
+(absolute path), because `target/` is relative to this checkout.
+
 `require_serial: true` is set because the steps are interactive and must not run
-concurrently.
+concurrently. `myhooks` no longer provides a `commit-msg` hook: remove
+`myhooks-commitmsg` from an existing config and add the gitlint and codespell
+repos (as in this repository's config) for commit-message checking.
 
 ### Windows
 
@@ -83,12 +93,11 @@ The interactive prompts open the console directly (`CONIN$`/`CONOUT$` plus
 Win32 console raw mode), because git runs hooks with stdin bound to `NUL`,
 exactly as it uses `/dev/null` on POSIX. Install with
 `scripts\install-hooks.ps1` from PowerShell (or `scripts/install-hooks.sh` from
-Git Bash, which ships with Git for Windows), or wire the two hook entries
+Git Bash, which ships with Git for Windows), or wire the hook entry
 manually:
 
 ```
 pre-commit : java -jar C:\path\to\myhooks-1.0.0.jar %*
-commit-msg : java -jar C:\path\to\myhooks-1.0.0.jar commitmsg %1
 ```
 
 Prompts need a console attached to the hook process. If there is none (a GUI
@@ -101,6 +110,8 @@ commit with `--no-verify`.
 
 ```
 ├── pom.xml                          Maven build (Java 17, shade fat jar)
+├── .pre-commit-config.yaml          local myhooks + gitlint commit-msg hook
+├── .gitlint                         Conventional Commit rules for gitlint
 ├── src/main/java/com/myhooks/
 │   ├── Main.java                    CLI entry (picocli)
 │   ├── discover/                    file selection (args vs staged, .jrxml filter)
@@ -113,7 +124,6 @@ commit with `--no-verify`.
 │   ├── textrules/                   pure text/expression transforms
 │   ├── includegraph/                include-chain graph build/invert/render
 │   └── steps/
-│       ├── commitmsg/               step 0 (LanguageTool spell/grammar)
 │       ├── clear/                   step 1
 │       ├── format/                  step 2
 │       ├── sort/                    step 3
@@ -126,6 +136,7 @@ commit with `--no-verify`.
 
 ## Docs
 
+- [`PRE_COMMIT.md`](PRE_COMMIT.md) — add the pre-commit + gitlint setup to your repo.
 - [`SPEC.md`](SPEC.md) — the Java software specification.
 - [`PLAN.md`](PLAN.md) — refactor plan and locked decisions.
 - [`USER_STORIES.md`](USER_STORIES.md) — step-by-step stories (one commit each).

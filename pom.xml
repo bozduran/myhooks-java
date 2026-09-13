@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>myhooks</name>
-    <description>JasperReports pre-commit / commit-msg hook (Java edition)</description>
+    <description>JasperReports pre-commit hook (Java edition)</description>
 
     <properties>
         <!-- Compile to Java 17 bytecode regardless of the local JDK. -->
@@ -24,7 +24,6 @@
         <picocli.version>4.7.6</picocli.version>
         <javaparser.version>3.26.3</javaparser.version>
         <java-diff-utils.version>4.16</java-diff-utils.version>
-        <languagetool.version>6.8</languagetool.version>
         <jna.version>5.12.1</jna.version>
     </properties>
 
@@ -73,20 +72,6 @@
             <groupId>io.github.java-diff-utils</groupId>
             <artifactId>java-diff-utils</artifactId>
             <version>${java-diff-utils.version}</version>
-        </dependency>
-
-        <!-- Real Java spell + grammar checker (commitmsg step). -->
-        <dependency>
-            <groupId>org.languagetool</groupId>
-            <artifactId>language-en</artifactId>
-            <version>${languagetool.version}</version>
-        </dependency>
-
-        <!-- Silence LanguageTool's SLF4J "no provider" warning on every run. -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-nop</artifactId>
-            <version>2.0.16</version>
         </dependency>
 
         <!-- Windows console access (CONIN$/CONOUT$ raw mode + VT processing). Only

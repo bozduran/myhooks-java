@@ -4,8 +4,8 @@ import java.util.List;
 
 /**
  * Adapts a {@link Discoverer} into a {@link Step} via the shared {@link Engine}.
- * The five file-oriented steps (clear, format, sort, textcheck, validate) are
- * {@code FileStep}s; commitmsg and report implement {@link Step} directly.
+ * The file-oriented steps (clear, format, sort, textcheck) are {@code FileStep}s;
+ * validate and report implement {@link Step} directly.
  */
 public final class FileStep implements Step {
 

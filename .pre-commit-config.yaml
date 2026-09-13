@@ -1,0 +1,39 @@
+# pre-commit configuration for this repository.
+#
+# Install the hooks once (myhooks runs on the pre-commit stage, gitlint on the
+# commit-msg stage):
+#
+#   pre-commit install --hook-type pre-commit --hook-type commit-msg
+#
+# `myhooks` is declared locally so it runs this checkout's freshly built fat jar;
+# run `mvn package` before committing .jrxml changes.
+#
+# Commit-message checking used to live in the Java `commitmsg` step (LanguageTool
+# spelling/grammar plus a hand-rolled Conventional Commit regex). It is now the
+# maintained `gitlint` hook (configured by `.gitlint`) plus codespell for
+# spelling.
+repos:
+  - repo: local
+    hooks:
+      - id: myhooks
+        name: myhooks (jrxml clear + format + sort + textcheck + validate + lint + report)
+        entry: java -jar target/myhooks-1.0.0.jar
+        language: system
+        files: \.jrxml$
+        pass_filenames: true
+        require_serial: true
+        stages: [pre-commit]
+
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+
+  # Spell-check the commit message (gitlint has no spell rule). codespell catches
+  # misspellings only, not grammar; `-L` lists domain words it should ignore.
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        stages: [commit-msg]
+        args: ["-L", "jrxml,jsonql,jasperreports,subreport"]

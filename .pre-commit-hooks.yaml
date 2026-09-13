@@ -3,21 +3,12 @@
   description: >-
     Runs the clear step (unused declarations + jsonql), the format step
     (attributes + expression + report name), the sort step (geometry order), the
-    textcheck step (rendered-text rules), the validate step (XSD + compile gate)
-    and the report step (include-chain) on staged .jrxml files. Applied changes
-    are left unstaged and the hook stops the commit for review.
+    textcheck step (rendered-text rules), the validate step (XSD + compile gate),
+    the lint step (static-analysis warnings) and the report step (include-chain)
+    on staged .jrxml files. Applied changes are left unstaged and the hook stops
+    the commit for review.
   entry: java -jar /path/to/myhooks.jar
   language: system
   files: \.jrxml$
   pass_filenames: true
   require_serial: true
-- id: myhooks-commitmsg
-  name: commit message semantic + typo check
-  description: >-
-    Validates the commit message: requires a Conventional Commit subject and
-    flags common misspellings. A non-conforming message blocks the commit; typos
-    can be corrected interactively or skipped.
-  entry: java -jar /path/to/myhooks.jar commitmsg
-  language: system
-  stages: [commit-msg]
-  always_run: true
