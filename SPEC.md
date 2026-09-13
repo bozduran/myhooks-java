@@ -41,7 +41,7 @@ clear → format → sort → textcheck → validate → lint → report
 | `sort` | reorder band/frame `<element>` children by geometry (y then x, stable) |
 | `textcheck` | period space, double-space, unrenderable characters, newline normalization |
 | `validate` | JRXML XSD validation + `JasperCompileManager` compile gate on modified files |
-| `lint` | static-analysis warnings (constant `printWhenExpression`, unchecked null dereference, missing `removeLineWhenBlank="true"` on textField/subreport); informational, never modifies, always returns 0 |
+| `lint` | static-analysis warnings (constant `printWhenExpression`, unchecked null dereference, missing `removeLineWhenBlank="true"` on textField/subreport, textField markup tags without `markup="styled"`/`"html"`/`"rtf"`); informational, never modifies, always returns 0 |
 | `report` | include-chain (informational, never modifies, always returns 0) |
 
 The step order above is the complete pre-commit sequence. Commit-message
