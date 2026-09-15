@@ -66,6 +66,30 @@ public final class Query {
     }
 
     /**
+     * The semantic unit a change belongs to: the nearest {@code <element>}
+     * ancestor-or-self (a band/frame child such as {@code textField}), or the
+     * ancestor-or-self that is a direct child of the document root (a
+     * declaration such as {@code <field>}/{@code <parameter>}). The root itself
+     * is returned when neither is found, so the result is never {@code null}.
+     *
+     * <p>This is the element whose full text a prompt preview shows around a
+     * change. For an expression inside a declaration the declaration wins; for
+     * an expression inside a band element that element wins.
+     */
+    public static Node enclosingUnit(Node node) {
+        for (Node n = node; n != null; n = n.parent()) {
+            if (n.tag().equals("element")) {
+                return n;
+            }
+            Node parent = n.parent();
+            if (parent == null || parent.parent() == null) {
+                return n; // the root, or a direct child of the root
+            }
+        }
+        return node;
+    }
+
+    /**
      * Reports whether {@code node} sits inside a rendered-text context: any
      * ancestor whose {@link Node#kind()} is {@code textField} or
      * {@code staticText}. Steps additionally treat

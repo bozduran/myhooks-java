@@ -1,0 +1,19 @@
+#!/bin/sh
+# myhooks pre-commit entry wrapper.
+#
+# The manifest declares `entry: bin/myhooks` with `language: script`.
+# pre-commit resolves that entry to an absolute path inside the cloned hook
+# repository and runs it directly, so $0 always points at this file and the
+# consuming repository's working directory never matters.
+set -eu
+
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+JAR="$DIR/myhooks.jar"
+
+if [ ! -f "$JAR" ]; then
+    echo "myhooks: jar not found at $JAR" >&2
+    echo "myhooks: rebuild with: mvn package && cp target/myhooks-1.0.0.jar bin/myhooks.jar" >&2
+    exit 127
+fi
+
+exec java -jar "$JAR" "$@"

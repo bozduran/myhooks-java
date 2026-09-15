@@ -16,6 +16,50 @@ When you are done, every commit runs:
 > LanguageTool `commitmsg` step was removed. The `commit-msg` checks are now the
 > maintained `gitlint` hook (configured by `.gitlint`) and `codespell`.
 
+## Using the published hook from GitHub (recommended)
+
+`myhooks` is published as a pre-commit **remote hook**. You do not copy config
+files or build the jar: add the repo to your `.pre-commit-config.yaml` and
+pre-commit clones it (the pre-built `bin/myhooks.jar` is committed) and runs it.
+
+```yaml
+repos:
+  - repo: https://github.com/bozduran/myhooks-java
+    rev: v1.0.0
+    hooks:
+      - id: myhooks
+
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        stages: [commit-msg]
+        args: ["-L", "jrxml,jsonql,jasperreports,subreport"]
+```
+
+Prerequisites for consumers: **Java 17+ on `PATH`** and `pre-commit`. Nothing
+else — pre-commit downloads everything automatically the first time a hook runs.
+
+```sh
+pre-commit install --hook-type pre-commit --hook-type commit-msg
+pre-commit run --all-files
+```
+
+The hook's `entry` is `bin/myhooks` with `language: script`, which pre-commit
+resolves relative to the *hook repository* checkout — so the consumer's working
+directory and the location of the cloned repo never matter.
+
+## Local / self-hosted setup (build the jar yourself)
+
+The rest of this guide describes the older flow where you copy the config files
+and point at a jar you built. Prefer the [published hook](#using-the-published-hook-from-github-recommended)
+unless you are developing myhooks or need to run an un-published build.
+
 ## Prerequisites
 
 - **Java 17+** on `PATH` (the hook runs `java -jar ...`).

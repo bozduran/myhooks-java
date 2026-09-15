@@ -1,7 +1,6 @@
 package com.myhooks.steps.textcheck;
 
 import com.myhooks.edit.Edit;
-import com.myhooks.io.Lines;
 import com.myhooks.io.XmlSource;
 import com.myhooks.step.Context;
 import com.myhooks.step.Discoverer;
@@ -69,7 +68,7 @@ public final class TextcheckDiscoverer implements Discoverer {
         }
         List<String> findings = new ArrayList<>();
         String transformed = transformText(cdata.content(), markup, findings);
-        addFixIfChanged(cdata, transformed, findings, raw, color, fixes);
+        addFixIfChanged(textNode, cdata, transformed, findings, raw, color, fixes);
     }
 
     private void expressionFix(Node expression, String raw, boolean isText, String markup,
@@ -80,15 +79,15 @@ public final class TextcheckDiscoverer implements Discoverer {
         }
         List<String> findings = new ArrayList<>();
         String transformed = transformExpression(cdata.content(), isText, markup, findings);
-        addFixIfChanged(cdata, transformed, findings, raw, color, fixes);
+        addFixIfChanged(expression, cdata, transformed, findings, raw, color, fixes);
     }
 
-    private void addFixIfChanged(Cdata cdata, String transformed, List<String> findings,
+    private void addFixIfChanged(Node node, Cdata cdata, String transformed, List<String> findings,
             String raw, boolean color, List<Fix> fixes) {
         if (!transformed.equals(cdata.content())) {
             String description = findings.isEmpty() ? "fix text" : String.join(", ", findings);
-            fixes.add(new EditFix(description, cdata.content(), transformed,
-                    new Edit(cdata.start(), cdata.end(), transformed), color, Lines.lineOf(raw, cdata.start())));
+            fixes.add(EditFix.inElement(description, new Edit(cdata.start(), cdata.end(), transformed),
+                    color, raw, node));
         }
     }
 

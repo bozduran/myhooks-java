@@ -7,8 +7,8 @@
     the lint step (static-analysis warnings) and the report step (include-chain)
     on staged .jrxml files. Applied changes are left unstaged and the hook stops
     the commit for review.
-  entry: java -jar /path/to/myhooks.jar
-  language: system
+  entry: bin/myhooks
+  language: script
   files: \.jrxml$
   pass_filenames: true
   require_serial: true

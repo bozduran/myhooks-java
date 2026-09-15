@@ -99,9 +99,9 @@ public final class ClearDiscoverer implements Discoverer {
                     unusedFieldNames.add(d.name());
                 }
                 int[] span = removalSpan(raw, d.start(), d.end());
-                unusedFixes.add(new EditFix("delete unused " + d.kind().name().toLowerCase() + " '" + d.name() + "'",
-                        raw.substring(span[0], d.end()), "",
-                        new Edit(span[0], span[1], ""), context.color(), Lines.lineOf(raw, span[0])));
+                unusedFixes.add(EditFix.inContext(
+                        "delete unused " + d.kind().name().toLowerCase() + " '" + d.name() + "'",
+                        new Edit(span[0], span[1], ""), context.color(), raw, d.start(), d.end()));
             }
         }
         if (!unusedFixes.isEmpty()) {
@@ -120,13 +120,12 @@ public final class ClearDiscoverer implements Discoverer {
             if (d.jsonqlValue().isEmpty() || d.jsonqlValue().equals(d.descriptionText())) {
                 continue;
             }
-            syncFixes.add(new EditFix(
+            syncFixes.add(EditFix.inContext(
                     "change description for field '" + d.name() + "' from \"" + d.descriptionText()
                             + "\" to \"" + d.jsonqlValue() + "\"",
-                    d.descriptionText(), d.jsonqlValue(),
                     new Edit(d.descriptionStart(), d.descriptionEnd(),
                             d.descriptionCdata() ? d.jsonqlValue() : JrStringUtil.encode(d.jsonqlValue())),
-                    context.color(), Lines.lineOf(raw, d.descriptionStart())));
+                    context.color(), raw, d.start(), d.end()));
         }
         if (!syncFixes.isEmpty()) {
             groups.add(new Group("description sync", syncFixes));
@@ -144,21 +143,21 @@ public final class ClearDiscoverer implements Discoverer {
             if (d.hasLegacy()) {
                 if (d.hasJsonql()) {
                     int[] span = removalSpan(raw, d.legacyStart(), d.legacyEnd());
-                    jsonqlFixes.add(new EditFix("remove legacy " + JSON_FIELD_PROPERTY + " from field '" + d.name() + "'",
-                            raw.substring(span[0], d.legacyEnd()), "",
-                            new Edit(span[0], span[1], ""), context.color(), Lines.lineOf(raw, span[0])));
+                    jsonqlFixes.add(EditFix.inContext(
+                            "remove legacy " + JSON_FIELD_PROPERTY + " from field '" + d.name() + "'",
+                            new Edit(span[0], span[1], ""), context.color(), raw, d.start(), d.end()));
                 } else {
-                    jsonqlFixes.add(new EditFix("rename " + JSON_FIELD_PROPERTY + " to " + JSONQL_FIELD_PROPERTY,
-                            JSON_FIELD_PROPERTY, JSONQL_FIELD_PROPERTY,
-                            new Edit(d.legacyNameStart(), d.legacyNameEnd(), JSONQL_FIELD_PROPERTY), context.color(),
-                            Lines.lineOf(raw, d.legacyNameStart())));
+                    jsonqlFixes.add(EditFix.inContext(
+                            "rename " + JSON_FIELD_PROPERTY + " to " + JSONQL_FIELD_PROPERTY,
+                            new Edit(d.legacyNameStart(), d.legacyNameEnd(), JSONQL_FIELD_PROPERTY),
+                            context.color(), raw, d.start(), d.end()));
                 }
             } else if (!d.hasJsonql() && d.hasDescription() && !d.descriptionText().isBlank()) {
                 String line = jsonqlPropertyLine(d);
                 int insertAt = lineStart(raw, d.endTag());
-                jsonqlFixes.add(new EditFix("add " + JSONQL_FIELD_PROPERTY + " = \"" + d.descriptionText() + "\"",
-                        "", line.strip(),
-                        new Edit(insertAt, insertAt, line + "\n"), context.color(), Lines.lineOf(raw, insertAt)));
+                jsonqlFixes.add(EditFix.inContext(
+                        "add " + JSONQL_FIELD_PROPERTY + " = \"" + d.descriptionText() + "\"",
+                        new Edit(insertAt, insertAt, line + "\n"), context.color(), raw, d.start(), d.end()));
             }
         }
         if (!jsonqlFixes.isEmpty()) {

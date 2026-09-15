@@ -104,6 +104,24 @@ class TextcheckDiscovererTest {
     }
 
     @Test
+    void textFixPreviewShowsTheWholeEnclosingElement() throws Exception {
+        String report = """
+                <jasperReport name="t">
+                  <element kind="staticText" uuid="u2" x="0" y="20" width="100" height="20">
+                    <text><![CDATA[It\u2019s a test]]></text>
+                  </element>
+                </jasperReport>
+                """;
+        String diff = discover(report).get(0).fixes().get(0).diff();
+
+        assertTrue(diff.contains("<element kind=\"staticText\""), diff);
+        assertTrue(diff.contains("</element>"), diff);
+        assertEquals(1, marked(diff, '-').size(), diff);
+        assertEquals(1, marked(diff, '+').size(), diff);
+        assertTrue(marked(diff, '+').get(0).contains("It's a test"), diff);
+    }
+
+    @Test
     void discoverNonTextKeepsPeriod() throws Exception {
         String report = """
                 <jasperReport name="t" language="java" pageWidth="595" pageHeight="842" columnWidth="555"
@@ -185,5 +203,14 @@ class TextcheckDiscovererTest {
     private static Context context() {
         PrintStream out = new PrintStream(new ByteArrayOutputStream());
         return new Context(new FileDiscovery(), out, out, false, q -> Choice.NO);
+    }
+
+    /** The marked lines' text starting at the {@code -}/{@code +} marker. */
+    private static List<String> marked(String diff, char marker) {
+        String needle = marker + " ";
+        return diff.lines()
+                .filter(line -> line.contains(needle))
+                .map(line -> line.substring(line.indexOf(needle)))
+                .toList();
     }
 }

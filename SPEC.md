@@ -122,6 +122,14 @@ The shared prompt offers four choices per fix:
 - Diffs show the absolute file line number in a gutter. The red/green background
   covers the whole changed line — indentation, `-`/`+` marker, separating space,
   code, and padding out to the output width.
+- A diff is shown over the change's **whole enclosing element**: the nearest
+  `<element>` (a `textField`/`staticText`/… and its children), a declaration
+  such as `<field>` (its `description`/`property` lines included), or a
+  `parameter`/`variable` for an expression it owns. The element's untouched
+  lines are plain context and only the line(s) the edit touches are painted, so
+  a `json`→`jsonql` property rename shows the whole field but colors just the
+  property line. For a root attribute such as `<jasperReport name="…">` the
+  whole document would be the element, so only the root start tag is shown.
 - Output width and rule width come from `COLUMNS`, clamped to 40–100 (default
   52).
 - Each step prints `applied X, skipped Y, Z file(s) stopped`; a full run prints

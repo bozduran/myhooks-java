@@ -79,6 +79,25 @@ class ClearDiscovererTest {
     }
 
     @Test
+    void jsonqlRenamePreviewShowsTheWholeField() throws Exception {
+        String report = HEADER + """
+                  <field name="a" class="java.lang.String">
+                    <property name="net.sf.jasperreports.json.field.expression" value="a"/>
+                  </field>
+                """ + reference("a") + "</jasperReport>\n";
+        String diff = group(discover(report, ""), "jsonql fixes").fixes().get(0).diff();
+
+        assertTrue(diff.contains("<field name=\"a\" class=\"java.lang.String\">"), diff);
+        assertTrue(diff.contains("</field>"), diff);
+        List<String> removed = marked(diff, '-');
+        List<String> added = marked(diff, '+');
+        assertEquals(1, removed.size(), diff);
+        assertEquals(1, added.size(), diff);
+        assertTrue(removed.get(0).contains("json.field.expression"), diff);
+        assertTrue(added.get(0).contains("jsonql.field.expression"), diff);
+    }
+
+    @Test
     void removesLegacyWhenJsonqlAlreadyExists() throws Exception {
         String report = HEADER + """
                   <field name="a" class="java.lang.String">
@@ -164,6 +183,15 @@ class ClearDiscovererTest {
 
     private static Group group(List<Group> groups, String label) {
         return groups.stream().filter(g -> g.label().equals(label)).findFirst().orElseThrow();
+    }
+
+    /** The marked lines' text starting at the {@code -}/{@code +} marker. */
+    private static List<String> marked(String diff, char marker) {
+        String needle = marker + " ";
+        return diff.lines()
+                .filter(line -> line.contains(needle))
+                .map(line -> line.substring(line.indexOf(needle)))
+                .toList();
     }
 
     private static String apply(List<Fix> fixes, String report) {

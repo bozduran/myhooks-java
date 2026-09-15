@@ -25,6 +25,38 @@ mvn package                     # -> target/myhooks-1.0.0.jar (fat jar)
 java -jar target/myhooks-1.0.0.jar --help
 ```
 
+## Publishing releases
+
+The remote hook is the built fat jar, committed as `bin/myhooks.jar` and driven
+by the `bin/myhooks` wrapper. pre-commit clones the repository (there is no
+separate download step and no Maven build on the consumer side), so every
+release is:
+
+```sh
+mvn package
+cp target/myhooks-1.0.0.jar bin/myhooks.jar
+
+git add bin/myhooks.jar bin/myhooks .pre-commit-hooks.yaml
+git commit -m "build: ship myhooks 1.0.0 fat jar"
+git tag v1.0.0
+git push origin master --tags
+```
+
+Consumers then pin that tag:
+
+```yaml
+repos:
+  - repo: https://github.com/bozduran/myhooks-java
+    rev: v1.0.0
+    hooks:
+      - id: myhooks
+```
+
+The jar is ~18 MB because it embeds the JasperReports engine and its
+dependencies. If you would rather not commit a binary, the alternative is the
+`coursier` language (needs `cs` on the consumer's `PATH` plus the artifacts on
+Maven Central) — heavier setup, no binary in git.
+
 ## Install as hooks
 
 ### Raw git hooks
@@ -64,7 +96,41 @@ Deactivation only removes hooks carrying the myhooks marker and restores any
 
 ### pre-commit framework
 
-This repository ships a ready-to-use `.pre-commit-config.yaml`:
+#### Using the published hook from GitHub (recommended)
+
+`myhooks` is published as a pre-commit remote hook. Consumers only need the
+config below plus Java 17+ on `PATH` — pre-commit clones this repository
+(which ships the pre-built `bin/myhooks.jar`) and runs it, no Maven build
+needed:
+
+```yaml
+repos:
+  - repo: https://github.com/bozduran/myhooks-java
+    rev: v1.0.0
+    hooks:
+      - id: myhooks
+
+  # commit-message checking (not part of myhooks)
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        stages: [commit-msg]
+        args: ["-L", "jrxml,jsonql,jasperreports,subreport"]
+```
+
+The hook entry is `bin/myhooks` with `language: script`, so pre-commit resolves
+the script and its jar relative to the **hook repository** checkout, not the
+consumer's working directory. See [Publishing](#publishing-releases) for how the
+jar gets there.
+
+#### Local development configuration
+
+This repository's own `.pre-commit-config.yaml` is the development setup:
 
 - a **local** `myhooks` hook that runs `target/myhooks-1.0.0.jar` on staged
   `.jrxml` files (run `mvn package` first),
@@ -78,9 +144,11 @@ This repository ships a ready-to-use `.pre-commit-config.yaml`:
 pre-commit install --hook-type pre-commit --hook-type commit-msg
 ```
 
-See [`PRE_COMMIT.md`](PRE_COMMIT.md) for copying this configuration into another
-repository. Note that the local hook's `entry` must point at the **built jar**
-(absolute path), because `target/` is relative to this checkout.
+For other repositories, prefer the [published hook](#using-the-published-hook-from-github-recommended)
+above so contributors never build anything. The local configuration is only for
+developing myhooks itself; its `entry` must point at the **built jar** (absolute
+path), because `target/` is relative to this checkout. See
+[`PRE_COMMIT.md`](PRE_COMMIT.md) for the full local setup.
 
 `require_serial: true` is set because the steps are interactive and must not run
 concurrently. `myhooks` no longer provides a `commit-msg` hook: remove

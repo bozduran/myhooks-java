@@ -1,7 +1,6 @@
 package com.myhooks.steps.format;
 
 import com.myhooks.edit.Edit;
-import com.myhooks.io.Lines;
 import com.myhooks.io.XmlSource;
 import com.myhooks.jrutil.JrStringUtil;
 import com.myhooks.step.Context;
@@ -74,15 +73,14 @@ public final class FormatDiscoverer implements Discoverer {
             Attr attr = name.get();
             String current = JrStringUtil.decode(raw.substring(attr.valueStart(), attr.valueEnd()));
             if (!current.equals(expectedName)) {
-                fixes.add(new EditFix(description, current, expectedName,
-                        new Edit(attr.valueStart(), attr.valueEnd(), JrStringUtil.encode(expectedName)), color,
-                        Lines.lineOf(raw, attr.valueStart())));
+                fixes.add(EditFix.inElement(description,
+                        new Edit(attr.valueStart(), attr.valueEnd(), JrStringUtil.encode(expectedName)),
+                        color, raw, jasperReport));
             }
         } else {
             int pos = jasperReport.startTag() + 1 + jasperReport.tag().length();
-            fixes.add(new EditFix(description, "", expectedName,
-                    new Edit(pos, pos, " name=\"" + JrStringUtil.encode(expectedName) + "\""), color,
-                    Lines.lineOf(raw, pos)));
+            fixes.add(EditFix.inElement(description,
+                    new Edit(pos, pos, " name=\"" + JrStringUtil.encode(expectedName) + "\""), color, raw, jasperReport));
         }
     }
 
@@ -100,13 +98,12 @@ public final class FormatDiscoverer implements Discoverer {
         Optional<Attr> positionType = Query.findAttr(element, POSITION_TYPE);
         if (positionType.isEmpty()) {
             int pos = afterAttr(element, raw, "uuid", "kind");
-            fixes.add(new EditFix("add positionType=\"Float\"", "", "positionType=\"Float\"",
-                    new Edit(pos, pos, " positionType=\"Float\""), color, Lines.lineOf(raw, pos)));
+            fixes.add(EditFix.inElement("add positionType=\"Float\"",
+                    new Edit(pos, pos, " positionType=\"Float\""), color, raw, element));
         } else if (positionType.get().valueStart() == positionType.get().valueEnd()) {
             Attr attr = positionType.get();
-            fixes.add(new EditFix("set positionType=\"Float\"", "", "Float",
-                    new Edit(attr.valueStart(), attr.valueEnd(), "Float"), color,
-                    Lines.lineOf(raw, attr.valueStart())));
+            fixes.add(EditFix.inElement("set positionType=\"Float\"",
+                    new Edit(attr.valueStart(), attr.valueEnd(), "Float"), color, raw, element));
         }
     }
 
@@ -114,13 +111,12 @@ public final class FormatDiscoverer implements Discoverer {
         Optional<Attr> textAdjust = Query.findAttr(element, TEXT_ADJUST);
         if (textAdjust.isEmpty()) {
             int pos = beforeClose(element, raw);
-            fixes.add(new EditFix("add textAdjust=\"StretchHeight\"", "", "textAdjust=\"StretchHeight\"",
-                    new Edit(pos, pos, " textAdjust=\"StretchHeight\""), color, Lines.lineOf(raw, pos)));
+            fixes.add(EditFix.inElement("add textAdjust=\"StretchHeight\"",
+                    new Edit(pos, pos, " textAdjust=\"StretchHeight\""), color, raw, element));
         } else if (textAdjust.get().valueStart() == textAdjust.get().valueEnd()) {
             Attr attr = textAdjust.get();
-            fixes.add(new EditFix("set textAdjust=\"StretchHeight\"", "", "StretchHeight",
-                    new Edit(attr.valueStart(), attr.valueEnd(), "StretchHeight"), color,
-                    Lines.lineOf(raw, attr.valueStart())));
+            fixes.add(EditFix.inElement("set textAdjust=\"StretchHeight\"",
+                    new Edit(attr.valueStart(), attr.valueEnd(), "StretchHeight"), color, raw, element));
         }
     }
 
@@ -139,8 +135,8 @@ public final class FormatDiscoverer implements Discoverer {
         String body = raw.substring(contentStart, close);
         String formatted = JavaExpr.format(body);
         if (!formatted.equals(body)) {
-            fixes.add(new EditFix("format expression", body, formatted,
-                    new Edit(contentStart, close, formatted), color, Lines.lineOf(raw, contentStart)));
+            fixes.add(EditFix.inElement("format expression",
+                    new Edit(contentStart, close, formatted), color, raw, expression));
         }
     }
 

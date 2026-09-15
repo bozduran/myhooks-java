@@ -74,6 +74,37 @@ class FormatDiscovererTest {
     }
 
     @Test
+    void textAdjustPreviewShowsTheWholeElement() throws Exception {
+        String in = """
+                <jasperReport name="sample" language="java">
+                  <detail>
+                    <band height="100">
+                      <element kind="textField" uuid="u1" x="0" y="0" width="100" height="20">
+                        <expression><![CDATA["clean"]]></expression>
+                      </element>
+                    </band>
+                  </detail>
+                </jasperReport>
+                """;
+        Path file = dir.resolve("sample.jrxml");
+        Files.writeString(file, in);
+        Group textAdjust = new FormatDiscoverer().discover(context(), file).stream()
+                .filter(group -> group.label().equals("textAdjust"))
+                .findFirst()
+                .orElseThrow();
+        String diff = textAdjust.fixes().get(0).diff();
+
+        assertTrue(diff.contains("<element kind=\"textField\""), diff);
+        assertTrue(diff.contains("</element>"), diff);
+        assertTrue(diff.contains("<expression><![CDATA[\"clean\"]]></expression>"), diff);
+        List<String> removed = marked(diff, '-');
+        List<String> added = marked(diff, '+');
+        assertEquals(1, removed.size(), diff);
+        assertEquals(1, added.size(), diff);
+        assertTrue(added.get(0).contains("textAdjust=\"StretchHeight\""), diff);
+    }
+
+    @Test
     void reportsPositionTypeAndTextAdjustAsSeparateGroups() throws Exception {
         String in = """
                 <jasperReport name="sample" language="java">
@@ -162,5 +193,14 @@ class FormatDiscovererTest {
     private static Context context() {
         PrintStream out = new PrintStream(new ByteArrayOutputStream());
         return new Context(new FileDiscovery(), out, out, false, q -> Choice.NO);
+    }
+
+    /** The marked lines' text starting at the {@code -}/{@code +} marker. */
+    private static List<String> marked(String diff, char marker) {
+        String needle = marker + " ";
+        return diff.lines()
+                .filter(line -> line.contains(needle))
+                .map(line -> line.substring(line.indexOf(needle)))
+                .toList();
     }
 }
