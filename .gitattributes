@@ -1,0 +1,22 @@
+# Line-ending policy.
+#
+# Git for Windows defaults to core.autocrlf=true, which checks text files out
+# with CRLF. The hook entry point `bin/myhooks` would then begin with
+# "#!/usr/bin/env sh\r", and the shell fails with:
+#
+#     /usr/bin/env: 'sh\r': No such file or directory
+#     $'\r': command not found
+#     set: invalid option
+#
+# Forcing LF keeps a Windows clone byte-identical to a Linux/macOS clone, which
+# is what makes the shebang and the shell wrapper portable.
+#
+# After changing this file, refresh an existing checkout with:
+#
+#     git add --renormalize .
+#
+* text=auto eol=lf
+
+# Prebuilt fat jar: never convert it (git already detects the NUL bytes as
+# binary, but state it explicitly so the policy survives future changes).
+*.jar binary

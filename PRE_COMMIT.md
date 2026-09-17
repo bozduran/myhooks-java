@@ -54,6 +54,12 @@ The hook's `entry` is `bin/myhooks` with `language: script`, which pre-commit
 resolves relative to the *hook repository* checkout — so the consumer's working
 directory and the location of the cloned repo never matter.
 
+On Windows, pre-commit does not use git's shell: it reads the shebang itself and
+looks the interpreter up on `PATH`. Run `pre-commit` from **Git Bash**, or add
+Git's `usr\bin` to `PATH`, so `sh.exe` is found; otherwise the hook fails with
+``Executable `sh` not found``. The raw hooks (`scripts\install-hooks.ps1`) need
+no extra setup and are the more robust choice on Windows.
+
 ## Local / self-hosted setup (build the jar yourself)
 
 The rest of this guide describes the older flow where you copy the config files
@@ -243,12 +249,21 @@ fails on the `teh` misspelling.
   entry: java -jar "C:/tools/myhooks/myhooks-1.0.0.jar"
   ```
 
+  pre-commit runs `entry` directly, without a command shell, so do not append
+  cmd-style wildcards such as `%*` or POSIX `"$@"`. The repository's
+  `.gitattributes` forces LF for text files; if a checkout predates it and the
+  shell hooks were written with CRLF, refresh them with
+  `git rm --cached -r . && git reset --hard` (or re-clone) so the shebang stays
+  valid.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |
 | --- | --- |
 | `java: command not found` | Java 17+ is not on the `PATH` seen by the hook process. |
 | `Unable to access jarfile target/...` | `entry` is still relative; use the absolute jar path (step 3). |
+| pre-commit: ``Executable `sh` not found`` (Windows) | pre-commit resolves the wrapper's shebang itself and needs `sh.exe` on `PATH`. Run `pre-commit` from Git Bash, add Git's `usr\bin` to `PATH`, or use the raw hooks instead. |
+| `bin/myhooks: /bin/sh^M: bad interpreter` or `$'\r': command not found` | The script was checked out with CRLF. `.gitattributes` now forces LF; refresh with `git rm --cached -r . && git reset --hard` or re-clone. |
 | `myhooks: unknown argument: commitmsg` | A stale raw `commit-msg` hook from an older myhooks install. Run `scripts/deactivate-hooks.sh /path/to/your-repo`. |
 | `No such rule 'contrib-title-conventional-commits'` | `.gitlint` is missing or not at the repository root; gitlint reads it from there. |
 | pre-commit: `hook id 'myhooks-commitmsg' not found` | That hook id was removed. Delete it from your config and add the gitlint repo instead. |

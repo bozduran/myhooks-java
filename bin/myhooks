@@ -1,10 +1,16 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # myhooks pre-commit entry wrapper.
 #
 # The manifest declares `entry: bin/myhooks` with `language: script`.
 # pre-commit resolves that entry to an absolute path inside the cloned hook
 # repository and runs it directly, so $0 always points at this file and the
 # consuming repository's working directory never matters.
+#
+# The shebang is `env sh` rather than `/bin/sh` on purpose. On Windows
+# pre-commit parses the shebang itself and resolves the interpreter through
+# PATH; an absolute POSIX path such as `/bin/sh` is looked up as `C:\bin\sh`
+# and always fails. A bare `sh` is found as Git for Windows' sh.exe when
+# pre-commit runs from Git Bash (or any shell with Git's usr\bin on PATH).
 set -eu
 
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)

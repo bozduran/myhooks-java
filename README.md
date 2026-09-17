@@ -159,14 +159,40 @@ repos (as in this repository's config) for commit-message checking.
 
 The interactive prompts open the console directly (`CONIN$`/`CONOUT$` plus
 Win32 console raw mode), because git runs hooks with stdin bound to `NUL`,
-exactly as it uses `/dev/null` on POSIX. Install with
-`scripts\install-hooks.ps1` from PowerShell (or `scripts/install-hooks.sh` from
-Git Bash, which ships with Git for Windows), or wire the hook entry
-manually:
+exactly as it uses `/dev/null` on POSIX.
 
+Install the raw hook with the PowerShell installer, which writes it with LF line
+endings, no BOM and the executable bit set — that is what keeps the `#!/bin/sh`
+shebang valid on Windows:
+
+```powershell
+mvn package
+powershell -ExecutionPolicy Bypass -File scripts\install-hooks.ps1 C:\src\MyReports
 ```
-pre-commit : java -jar C:\path\to\myhooks-1.0.0.jar %*
+
+`scripts/install-hooks.sh` works too when run from Git Bash, which ships with
+Git for Windows. To wire a raw hook by hand, write this to
+`.git/hooks/pre-commit` — with **LF** line endings, since a CRLF shebang fails
+with `/bin/sh^M: bad interpreter: No such file or directory`:
+
+```sh
+#!/bin/sh
+exec java -jar "C:/path/to/myhooks-1.0.0.jar" "$@"
 ```
+
+For the pre-commit framework, run `pre-commit` from **Git Bash** (or put Git's
+`usr\bin` on `PATH`): the published hook's entry is a shell script, so
+pre-commit has to be able to find `sh.exe`. A local `language: system` hook is
+the alternative; keep forward slashes and quote the absolute path, and do not
+append a command-shell wildcard such as `%*` — pre-commit runs `entry` directly,
+without a shell:
+
+```yaml
+entry: java -jar "C:/tools/myhooks/myhooks-1.0.0.jar"
+```
+
+The repository's `.gitattributes` forces LF for text files precisely so a
+Windows clone cannot turn `bin/myhooks` into a CRLF script.
 
 Prompts need a console attached to the hook process. If there is none (a GUI
 git client, a detached CI run), the hook now **blocks with a clear error**
@@ -180,6 +206,7 @@ commit with `--no-verify`.
 ├── pom.xml                          Maven build (Java 17, shade fat jar)
 ├── .pre-commit-config.yaml          local myhooks + gitlint commit-msg hook
 ├── .gitlint                         Conventional Commit rules for gitlint
+├── .gitattributes                   force LF so the hook scripts stay runnable on Windows
 ├── src/main/java/com/myhooks/
 │   ├── Main.java                    CLI entry (picocli)
 │   ├── discover/                    file selection (args vs staged, .jrxml filter)
